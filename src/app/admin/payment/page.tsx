@@ -195,7 +195,7 @@ export default function PaymentQrPage() {
               value={payeeName}
               onChange={(e) => setPayeeName(e.target.value)}
               className="input-field"
-              placeholder="Teakuzz Cafe"
+              placeholder="Keffi"
             />
           </div>
         </div>
@@ -328,7 +328,7 @@ export default function PaymentQrPage() {
                         value={editPayeeName}
                         onChange={(e) => setEditPayeeName(e.target.value)}
                         className="input-field"
-                        placeholder="Teakuzz Cafe"
+                        placeholder="Keffi"
                       />
                     </div>
                     <div className="sm:col-span-2">

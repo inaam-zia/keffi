@@ -26,19 +26,20 @@ const onlySlugs = onlyArg
   : null;
 
 const categoryFile = {
-  "Cold Coffee": "cold-coffee.jpg",
-  "Coffee / Hot": "hot-coffee.jpg",
-  Tea: "tea.jpg",
-  Shakes: "shakes.jpg",
-  Coolers: "coolers.jpg",
-  Noodles: "noodles.jpg",
+  Soup: "soup.jpg",
+  Salads: "salads.jpg",
+  Starters: "starters.jpg",
+  Steam: "steam.jpg",
+  Burgers: "burgers.jpg",
+  Sandwiches: "sandwiches.jpg",
+  "From the Wok": "from-the-wok.jpg",
+  Rice: "rice.jpg",
+  "Sharing Bites": "sharing-bites.jpg",
+  "Mouth-Melting Cheese Bites": "cheese-bites.jpg",
+  "Keffi Signatures": "keffi-signatures.jpg",
+  "Pizza — Thin Crust": "pizza.jpg",
   Pasta: "pasta.jpg",
-  Burger: "burger.jpg",
-  "Grilled Sandwiches": "grilled-sandwiches.jpg",
-  "Sub Sandwiches": "sub-sandwiches.jpg",
-  Wrap: "wrap.jpg",
-  Fries: "fries.jpg",
-  Extra: "extra.jpg",
+  Desserts: "desserts.jpg",
   "Add-ons": "add-ons.jpg",
 };
 

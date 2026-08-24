@@ -10,7 +10,7 @@ function esc(s) {
 }
 
 const lines = [
-  "-- Teakkuzz Cafe menu — run in Supabase SQL Editor to replace the sample menu",
+  "-- Keffi menu — run in Supabase SQL Editor to replace the sample menu",
   "-- Safe: order_items store item names, not menu_item IDs",
   "",
   "delete from menu_items;",
@@ -33,7 +33,13 @@ const lines = [
   ") as v(cat, name, description, price, image_url)",
   "join menu_categories c on c.name = v.cat;",
   "",
+  "update cafe_settings",
+  "set app_name = 'Keffi',",
+  "    tagline = 'Crafted to Refresh',",
+  "    logo_url = '/keffi-logo.png'",
+  "where id = 1;",
+  "",
 ];
 
-writeFileSync(join(root, "supabase", "seed-teakkuz-menu.sql"), lines.join("\n"));
-console.log("Wrote supabase/seed-teakkuz-menu.sql");
+writeFileSync(join(root, "supabase", "seed-keffi-menu.sql"), lines.join("\n"));
+console.log("Wrote supabase/seed-keffi-menu.sql");

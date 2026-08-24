@@ -1,5 +1,5 @@
 {
-  "name": "cafe-order",
+  "name": "keffi",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed:menu": "node scripts/seed-teakkuz-menu.mjs",
+    "seed:menu": "node scripts/seed-keffi-menu.mjs",
     "generate:menu-images": "node scripts/generate-menu-images.mjs",
     "generate:menu-thumbs": "node scripts/generate-menu-thumbs.mjs"
   },

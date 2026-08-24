@@ -191,7 +191,7 @@ export default function BrandingPage() {
                 value={branding.appName}
                 onChange={(e) => setBranding({ ...branding, appName: e.target.value })}
                 className="input-field"
-                placeholder="Teakkuzz Cafe"
+                placeholder="Keffi"
               />
             </div>
             <div>

@@ -69,69 +69,16 @@ create index if not exists cafe_tables_number_idx on cafe_tables (table_number);
 
 create table if not exists cafe_settings (
   id int primary key default 1 check (id = 1),
-  app_name text not null default 'Teakkuzz Cafe',
-  logo_url text,
-  tagline text default 'Scan the QR code on your table to browse the menu and place an order.',
+  app_name text not null default 'Keffi',
+  logo_url text default '/keffi-logo.png',
+  tagline text default 'Crafted to Refresh',
   theme jsonb not null default '{}'::jsonb,
   updated_at timestamptz default now()
 );
 
-insert into cafe_settings (id, app_name) values (1, 'Teakkuzz Cafe') on conflict (id) do nothing;
+insert into cafe_settings (id, app_name, logo_url, tagline)
+values (1, 'Keffi', '/keffi-logo.png', 'Crafted to Refresh')
+on conflict (id) do nothing;
 
--- Teakkuzz Cafe menu (skip if you already have items)
-insert into menu_categories (name, sort_order)
-select v.name, v.sort_order
-from (values
-  ('Noodles', 1),
-  ('Pasta', 2),
-  ('Burger', 3),
-  ('Grilled Sandwiches', 4),
-  ('Sub Sandwiches', 5),
-  ('Wrap', 6),
-  ('Fries', 7),
-  ('Extra', 8),
-  ('Add-ons', 9)
-) as v(name, sort_order)
-where not exists (select 1 from menu_categories);
-
-insert into menu_items (category_id, name, description, price)
-select c.id, v.name, v.description, v.price
-from (values
-  ('Noodles', 'Maggi', '', 79),
-  ('Noodles', 'Yippee', '', 79),
-  ('Noodles', 'Wai Wai', '', 79),
-  ('Pasta', 'White Sauce Pasta', '', 149),
-  ('Pasta', 'Red Sauce Pasta', '', 149),
-  ('Pasta', 'Pink Sauce Pasta', '', 159),
-  ('Burger', 'Aloo Tikki Burger', '', 69),
-  ('Burger', 'Veg. Crispy Burger', '', 99),
-  ('Burger', 'Schezwan Burger', '', 89),
-  ('Burger', 'Achari Masti Burger', '', 99),
-  ('Burger', 'Peri-Peri Nachos Burger', '', 109),
-  ('Burger', 'Tandoori Paneer Burger', '', 119),
-  ('Grilled Sandwiches', 'Rainbow Sandwich', '', 109),
-  ('Grilled Sandwiches', 'Moms Kitchen Magic Sandwich', 'Teakkuz Special', 119),
-  ('Grilled Sandwiches', 'Cheese Corn Sandwich', '', 129),
-  ('Grilled Sandwiches', 'Classic Paneer Sandwich', '', 139),
-  ('Sub Sandwiches', 'Garden Fresh', 'Teakkuz Special', 139),
-  ('Sub Sandwiches', 'Schezwan Paneer Sub', '', 169),
-  ('Wrap', 'Aloo Tikki Wrap', '', 109),
-  ('Wrap', 'Veggie Delite Wrap', '', 99),
-  ('Wrap', 'Achari Paneer Wrap', '', 129),
-  ('Wrap', 'Paneer Wrap', '', 119),
-  ('Fries', 'Classic Salted Fries', '', 89),
-  ('Fries', 'Peri-Peri Fries', '', 99),
-  ('Fries', 'Chatkara Fries', '', 109),
-  ('Fries', 'Cheese Loaded Fries', '', 129),
-  ('Fries', 'Pizza Pocket', '', 119),
-  ('Fries', 'Cheese Corn', '', 109),
-  ('Extra', 'Bun Maska', '', 49),
-  ('Extra', 'Mix Salad Bowl', '', 89),
-  ('Extra', 'Sweet Corn', '', 119),
-  ('Add-ons', 'Dip', 'Extra', 15),
-  ('Add-ons', 'Cheese Slice', 'Extra', 20),
-  ('Add-ons', 'Honey', 'Extra', 20),
-  ('Add-ons', 'Espresso Shot', 'Extra', 69)
-) as v(cat, name, description, price)
-join menu_categories c on c.name = v.cat
-where not exists (select 1 from menu_items);
+-- Printed Keffi menu (categories + items) is in supabase/seed-keffi-menu.sql.
+-- Run that file after this schema to load or replace the menu.

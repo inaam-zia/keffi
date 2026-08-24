@@ -1,6 +1,6 @@
-# Cafe QR Ordering
+# Keffi QR Ordering
 
-A simple web app for small cafes. Customers scan a QR code at their table and order from their phone. The cafe owner manages everything from a browser — **nothing to install on the cafe computer**.
+A simple web app for Keffi. Customers scan a QR code at their table and order from their phone. Staff manage everything from a browser — **nothing to install on the restaurant computer**.
 
 ## How it works
 
@@ -17,6 +17,7 @@ Everything runs in the cloud. The cafe only needs a browser bookmark.
 
 1. Go to [supabase.com](https://supabase.com) and create a free project
 2. Open **SQL Editor** → paste and run `supabase/schema.sql`
+3. Then paste and run `supabase/seed-keffi-menu.sql` to load the printed Keffi menu
 3. Go to **Settings → API** and copy:
    - Project URL → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
@@ -31,7 +32,7 @@ Everything runs in the cloud. The cafe only needs a browser bookmark.
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `ADMIN_PASSWORD` (pick a strong password for your friend)
-   - `NEXT_PUBLIC_CAFE_NAME` (e.g. "Sunrise Cafe")
+   - `NEXT_PUBLIC_CAFE_NAME` (e.g. "Keffi")
 4. Deploy — you get a URL like `https://your-cafe.vercel.app`
 
 ### 3. Print QR codes

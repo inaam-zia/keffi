@@ -72,7 +72,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`Done! Teakkuzz menu loaded (${rows.length} items, ${categories.length} categories).`);
+  console.log(`Done! Keffi menu loaded (${rows.length} items, ${categories.length} categories).`);
 }
 
 main();
