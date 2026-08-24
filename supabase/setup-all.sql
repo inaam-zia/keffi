@@ -83,10 +83,15 @@ create unique index if not exists cafe_tables_qr_token_uidx
 
 update cafe_tables set session_id = gen_random_uuid() where session_id is null;
 
-insert into cafe_tables (table_number, enabled)
-select v.n, true
+insert into cafe_tables (table_number, enabled, qr_token)
+select v.n, true, replace(gen_random_uuid()::text, '-', '')
 from generate_series(1, 7) as v(n)
 where not exists (select 1 from cafe_tables);
+
+-- Backfill tokens for any existing tables that still lack one
+update cafe_tables
+set qr_token = replace(gen_random_uuid()::text, '-', '')
+where qr_token is null;
 
 update cafe_tables
 set label = 'Table ' || table_number::text

@@ -13,3 +13,6 @@ insert into cafe_tables (table_number, enabled)
 select v.n, true
 from generate_series(1, 7) as v(n)
 where not exists (select 1 from cafe_tables);
+
+-- Prefer add-table-qr-token.sql / backfill-table-qr-tokens.sql so each
+-- table gets a unique ?t= token in its printed QR URL.

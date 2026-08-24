@@ -421,9 +421,10 @@ export default function TablesPage() {
         <div>
           <h2 className="text-2xl font-bold text-cafe-900">Table QR codes</h2>
           <p className="text-cafe-600">
-            Manage tables by name and number. The name is shown prominently; the number
-          stays in QR links. Renaming a table deletes its previous orders and
-          invalidates the old QR.
+            Manage tables by name and number. Each QR link includes a secret token
+            (like <code className="text-xs">/scan/1?t=…</code>) so guests can&apos;t open
+            another table by changing the number. Use &quot;Generate new QR&quot; if a code is
+            leaked or you reprint.
           </p>
         </div>
         {tables.length > 0 && (

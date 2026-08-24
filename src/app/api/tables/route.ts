@@ -6,6 +6,32 @@ import { newQrToken } from "@/lib/table-session";
 import { nextAvailableTableNumber } from "@/lib/tables";
 import type { CafeTable } from "@/lib/types";
 
+/** Assign opaque QR tokens to any tables that are missing them. */
+async function ensureTableQrTokens(
+  supabase: ReturnType<typeof createServerClient>,
+  tables: CafeTable[]
+): Promise<CafeTable[]> {
+  const missing = tables.filter((t) => !t.qr_token);
+  if (!missing.length) return tables;
+
+  const updates = await Promise.all(
+    missing.map(async (table) => {
+      const qrToken = newQrToken();
+      const { data, error } = await supabase
+        .from("cafe_tables")
+        .update({ qr_token: qrToken })
+        .eq("id", table.id)
+        .select()
+        .single();
+      if (error || !data) return table;
+      return data as CafeTable;
+    })
+  );
+
+  const byId = new Map(updates.map((t) => [t.id, t]));
+  return tables.map((t) => byId.get(t.id) ?? t);
+}
+
 export async function GET() {
   if (!isSupabaseConfigured()) {
     return NextResponse.json(
@@ -43,19 +69,20 @@ export async function GET() {
           );
         }
         const admin = isAdminAuthenticated();
-        const tables = (fallback.data ?? []) as CafeTable[];
+        let tables = (fallback.data ?? []) as CafeTable[];
         if (!admin) {
           return NextResponse.json({
             tables: tables.filter((t) => t.enabled).map((t) => t.table_number),
           });
         }
+        tables = await ensureTableQrTokens(supabase, tables);
         return NextResponse.json({ tables });
       }
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 500 });
     }
 
     const admin = isAdminAuthenticated();
-    const tables = (data ?? []) as CafeTable[];
+    let tables = (data ?? []) as CafeTable[];
 
     if (!admin) {
       return NextResponse.json({
@@ -63,6 +90,7 @@ export async function GET() {
       });
     }
 
+    tables = await ensureTableQrTokens(supabase, tables);
     return NextResponse.json({ tables });
   } catch (err) {
     return NextResponse.json({ error: formatSupabaseError(err) }, { status: 500 });
