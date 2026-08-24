@@ -72,6 +72,20 @@ async function main() {
     process.exit(1);
   }
 
+  const { error: settingsError } = await supabase
+    .from("cafe_settings")
+    .update({
+      app_name: "Keffi",
+      tagline: "Crafted to Refresh",
+      logo_url: "/keffi-logo.png",
+    })
+    .eq("id", 1);
+
+  if (settingsError) {
+    console.error("Settings error:", settingsError.message);
+    process.exit(1);
+  }
+
   console.log(`Done! Keffi menu loaded (${rows.length} items, ${categories.length} categories).`);
 }
 

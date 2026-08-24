@@ -377,9 +377,8 @@ export default function SettingsPage() {
         <div>
           <h3 className="font-bold text-brand-heading">Payment QR password</h3>
           <p className="mt-1 text-sm text-brand-muted">
-            Extra lock for sensitive admin sections (Offers, Inventory, Recipes,
-            Insights, Table QR, Appearance, Payment QR, History, Settings). Live
-            orders, Dashboard, Customers, and Menu stay open.
+            Optional extra password for Payment QR. Admin sections are no longer
+            locked behind this password after login.
             {status?.paymentQrPasswordCustomized
               ? " Currently using a password saved from Settings."
               : " If not set here, the admin password (or PAYMENT_QR_PASSWORD env) is used."}

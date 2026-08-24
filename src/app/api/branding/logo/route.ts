@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { clearBrandingCache } from "@/lib/branding";
-import { createServerClient, isSupabaseConfigured } from "@/lib/supabase";
+import { createServerClient, getSupabaseHttpUrl, isSupabaseConfigured } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/supabase-errors";
 
 const BUCKET = "branding";
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: uploadError.message }, { status: 400 });
     }
 
-    const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "") || "";
+    const base = getSupabaseHttpUrl() || "";
     const url = `${base}/storage/v1/object/public/${BUCKET}/${path}`;
 
     const { error: saveError } = await supabase

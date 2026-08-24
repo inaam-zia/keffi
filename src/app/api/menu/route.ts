@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { sanitizeMenuImageUrl } from "@/lib/menu-image";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/supabase-errors";
 
@@ -38,7 +39,12 @@ export async function GET() {
       return NextResponse.json({ error: message }, { status: 500 });
     }
 
-    return NextResponse.json({ categories, items });
+    const safeItems = (items ?? []).map((item) => ({
+      ...item,
+      image_url: sanitizeMenuImageUrl(item.image_url),
+    }));
+
+    return NextResponse.json({ categories, items: safeItems });
   } catch (err) {
     return NextResponse.json({ error: formatSupabaseError(err) }, { status: 500 });
   }

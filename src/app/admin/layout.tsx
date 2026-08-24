@@ -2,11 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import DeveloperCredit from "@/components/developer-credit";
-import SensitiveAdminGate from "@/components/sensitive-admin-gate";
-import { isSensitiveAdminPath } from "@/lib/admin-sensitive-paths";
-import { PaymentLockProvider, usePaymentLock } from "./payment-lock-context";
 import { NewOrdersProvider, useNewOrders } from "./new-orders-context";
 
 // Admin always uses Open Sans regardless of the customer-facing theme font.
@@ -31,37 +28,11 @@ const links = [
   { href: "/admin/settings", label: "Settings" },
 ];
 
-function LockIcon({ open }: { open: boolean }) {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <rect x="3" y="11" width="18" height="10" rx="2" />
-      {open ? (
-        <path d="M7 11V7a5 5 0 0 1 9.9-1" />
-      ) : (
-        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-      )}
-    </svg>
-  );
-}
-
 function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { unlocked, setUnlocked } = usePaymentLock();
   const { newOrderCount } = useNewOrders();
-  const prevPathRef = useRef(pathname);
   const [lowStockCount, setLowStockCount] = useState(0);
-  const pathIsSensitive = isSensitiveAdminPath(pathname);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,25 +54,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     };
   }, [pathname]);
 
-  // Re-lock when leaving a sensitive section for an open one (orders/menu/etc.).
-  useEffect(() => {
-    const prev = prevPathRef.current;
-    prevPathRef.current = pathname;
-
-    const wasSensitive = isSensitiveAdminPath(prev);
-    const nowSensitive = isSensitiveAdminPath(pathname);
-
-    if (wasSensitive && !nowSensitive && unlocked) {
-      setUnlocked(false);
-      fetch("/api/admin/payment-qr/unlock", { method: "DELETE" }).catch(() => {});
-    }
-  }, [pathname, unlocked, setUnlocked]);
-
   async function logout() {
-    if (unlocked) {
-      setUnlocked(false);
-      await fetch("/api/admin/payment-qr/unlock", { method: "DELETE" }).catch(() => {});
-    }
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/admin/login");
   }
@@ -126,7 +79,6 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             const active = pathname === link.href;
             const isLiveOrders = link.href === "/admin/orders";
             const isInventory = link.href === "/admin/inventory";
-            const linkSensitive = isSensitiveAdminPath(link.href);
             return (
               <Link
                 key={link.href}
@@ -135,9 +87,6 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                   active ? "nav-active" : "nav-inactive"
                 }`}
               >
-                {linkSensitive && (
-                  <LockIcon open={unlocked && pathIsSensitive} />
-                )}
                 {link.label}
                 {isLiveOrders && newOrderCount > 0 && (
                   <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
@@ -158,11 +107,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         </nav>
       </header>
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 [padding-bottom:calc(1.5rem+env(safe-area-inset-bottom))]">
-        {pathIsSensitive ? (
-          <SensitiveAdminGate title="Locked section">{children}</SensitiveAdminGate>
-        ) : (
-          children
-        )}
+        {children}
       </main>
       <footer className="mx-auto w-full max-w-5xl shrink-0 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2">
         <DeveloperCredit />
@@ -186,10 +131,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <PaymentLockProvider>
-      <NewOrdersProvider>
-        <AdminShell>{children}</AdminShell>
-      </NewOrdersProvider>
-    </PaymentLockProvider>
+    <NewOrdersProvider>
+      <AdminShell>{children}</AdminShell>
+    </NewOrdersProvider>
   );
 }

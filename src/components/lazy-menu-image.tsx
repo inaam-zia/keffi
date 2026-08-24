@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { menuThumbUrl } from "@/lib/menu-image";
+import { menuThumbUrl, sanitizeMenuImageUrl } from "@/lib/menu-image";
 
 const PLACEHOLDER =
   "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
@@ -15,9 +15,15 @@ type Props = {
 export default function LazyMenuImage({ src, alt, className = "" }: Props) {
   const ref = useRef<HTMLImageElement>(null);
   const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
 
   const thumb = menuThumbUrl(src);
-  const fullSrc = src ?? null;
+  const fullSrc = sanitizeMenuImageUrl(src);
+
+  useEffect(() => {
+    setLoadedSrc(null);
+    setFailed(false);
+  }, [thumb, fullSrc]);
 
   useEffect(() => {
     const el = ref.current;
@@ -42,12 +48,14 @@ export default function LazyMenuImage({ src, alt, className = "" }: Props) {
     return () => observer.disconnect();
   }, [thumb]);
 
-  if (!src) return null;
+  if (!fullSrc || failed) return null;
 
   function handleError() {
     if (fullSrc && loadedSrc !== fullSrc) {
       setLoadedSrc(fullSrc);
+      return;
     }
+    setFailed(true);
   }
 
   return (

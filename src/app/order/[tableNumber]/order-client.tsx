@@ -500,7 +500,7 @@ function ItemDetailSheet({
         onClick={onClose}
       />
       <div className="item-detail-sheet" role="dialog" aria-modal="true" aria-label={item.name}>
-        <div className="item-detail-sheet__panel mx-auto max-w-lg">
+          <div className="item-detail-sheet__panel w-full">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-lg font-bold text-cafe-900">{item.name}</p>
@@ -1276,7 +1276,7 @@ export default function OrderClient({
           className={`cart-sheet${showCart || orderPlacedSuccess ? " cart-sheet--open" : ""}`}
         >
           {orderPlacedSuccess ? (
-            <div className="mx-auto w-full max-w-lg py-2">
+            <div className="w-full py-2">
               <div className="slide-to-order slide-to-order--success" role="status" aria-live="polite">
                 <span className="slide-to-order__success-icon" aria-hidden>
                   ✓
@@ -1291,7 +1291,7 @@ export default function OrderClient({
                 setDetailItem(null);
                 setShowCart(true);
               }}
-              className="cart-bar mx-auto flex w-full max-w-lg items-center justify-between gap-3"
+              className="cart-bar flex w-full items-center justify-between gap-3"
             >
               <span className="cart-bar__badge" aria-hidden>
                 {cartCount}
@@ -1305,7 +1305,7 @@ export default function OrderClient({
               <span className="shrink-0 text-sm font-bold tracking-wide">VIEW →</span>
             </button>
           ) : (
-            <div className="cart-sheet__panel mx-auto flex max-w-lg flex-col">
+            <div className="cart-sheet__panel flex w-full flex-col">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-lg font-bold text-cafe-900">Your cart</h3>
                 <button

@@ -1,4 +1,5 @@
 import { unstable_noStore as noStore } from "next/cache";
+import { sanitizeMenuImageUrl } from "@/lib/menu-image";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase";
 import type { Offer, OfferItem } from "@/lib/types";
 
@@ -11,12 +12,15 @@ type OfferRow = Offer & {
 function normalizeOffer(row: OfferRow): Offer {
   const offerItems = (row.offer_items ?? []).map((oi) => {
     const menu = Array.isArray(oi.menu_item) ? oi.menu_item[0] : oi.menu_item;
+    const menuItem = menu
+      ? { ...menu, image_url: sanitizeMenuImageUrl(menu.image_url) }
+      : undefined;
     return {
       id: oi.id,
       offer_id: oi.offer_id,
       menu_item_id: oi.menu_item_id,
       quantity: oi.quantity,
-      menu_item: menu ?? undefined,
+      menu_item: menuItem,
     };
   });
 
@@ -25,7 +29,7 @@ function normalizeOffer(row: OfferRow): Offer {
     name: row.name,
     description: row.description ?? "",
     price: Number(row.price),
-    image_url: row.image_url,
+    image_url: sanitizeMenuImageUrl(row.image_url),
     active: row.active,
     sort_order: row.sort_order,
     created_at: row.created_at,

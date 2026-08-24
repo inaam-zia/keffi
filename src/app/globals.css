@@ -332,7 +332,7 @@
   }
 
   .cart-sheet {
-    @apply order-footer fixed bottom-0 left-0 right-0 z-30 p-5 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] backdrop-blur-md;
+    @apply order-footer fixed bottom-0 left-1/2 z-30 w-full max-w-lg -translate-x-1/2 px-[20px] pt-5 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] backdrop-blur-md;
     padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
   }
 
@@ -428,7 +428,7 @@
   }
 
   .item-detail-sheet {
-    @apply order-footer fixed bottom-0 left-0 right-0 z-40 p-5 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] backdrop-blur-md;
+    @apply order-footer fixed bottom-0 left-1/2 z-40 w-full max-w-lg -translate-x-1/2 px-[20px] pt-5 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] backdrop-blur-md;
     padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
     max-height: min(80dvh, 100%);
     overflow: hidden;

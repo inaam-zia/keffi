@@ -27,7 +27,8 @@ const lines = [
   items
     .map(([cat, name, desc, price], i) => {
       const img = itemImagePath(name);
-      return `  ('${esc(cat)}', '${esc(name)}', '${esc(desc)}', ${price}, '${img}')${i < items.length - 1 ? "," : ""}`;
+      const imgSql = img ? `'${esc(img)}'` : "null";
+      return `  ('${esc(cat)}', '${esc(name)}', '${esc(desc)}', ${price}, ${imgSql})${i < items.length - 1 ? "," : ""}`;
     })
     .join("\n"),
   ") as v(cat, name, description, price, image_url)",

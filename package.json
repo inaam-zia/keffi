@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "seed:menu": "node scripts/seed-keffi-menu.mjs",
+    "db:setup": "node scripts/setup-database.mjs",
+    "db:audit": "node scripts/audit-database.mjs",
     "generate:menu-images": "node scripts/generate-menu-images.mjs",
     "generate:menu-thumbs": "node scripts/generate-menu-thumbs.mjs"
   },

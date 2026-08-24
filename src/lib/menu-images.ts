@@ -1,11 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getSupabaseHttpUrl } from "@/lib/supabase";
 
 const BUCKET = "menu-images";
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 export function getMenuImagePublicUrl(path: string): string {
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "") || "";
+  const base = getSupabaseHttpUrl() || "";
   return `${base}/storage/v1/object/public/${BUCKET}/${path}`;
 }
 

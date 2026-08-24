@@ -153,8 +153,8 @@ export const items = [
   ["Add-ons", "Cottage Cheese", "Pasta add-on", 99],
 ];
 
-export function itemImagePath(name) {
-  return `/menu/items/${slugify(name)}.jpg`;
+export function itemImagePath(_name) {
+  return null;
 }
 
 export function enrichedItems() {

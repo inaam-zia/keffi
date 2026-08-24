@@ -1,17 +1,20 @@
-/** Admin paths that stay open without the Payment QR password. */
+/** Admin paths that stay open without a second password. All sections are open. */
 export const OPEN_ADMIN_PATHS = [
   "/admin/orders",
   "/admin/dashboard",
   "/admin/customers",
   "/admin/menu",
+  "/admin/offers",
+  "/admin/inventory",
+  "/admin/recipes",
+  "/admin/insights",
+  "/admin/tables",
+  "/admin/branding",
+  "/admin/payment",
+  "/admin/history",
+  "/admin/settings",
 ] as const;
 
-export function isSensitiveAdminPath(pathname: string): boolean {
-  if (!pathname.startsWith("/admin")) return false;
-  if (pathname === "/admin/login") return false;
-  if (pathname === "/admin" || pathname === "/admin/") return false;
-
-  return !OPEN_ADMIN_PATHS.some(
-    (open) => pathname === open || pathname.startsWith(`${open}/`)
-  );
+export function isSensitiveAdminPath(_pathname: string): boolean {
+  return false;
 }

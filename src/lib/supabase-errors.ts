@@ -10,8 +10,8 @@ export function formatSupabaseError(err: unknown): string {
     return message;
   }
 
-  if (message.includes("Invalid path specified")) {
-    return "Supabase URL should be only the project URL (e.g. https://xxx.supabase.co) — do not include /rest/v1/.";
+  if (message.includes("Invalid URL") || message.includes("Invalid path specified")) {
+    return "Supabase URL should be only the project URL (e.g. https://xxx.supabase.co).";
   }
 
   if (message.includes("fetch failed") || message.includes("ENOTFOUND")) {

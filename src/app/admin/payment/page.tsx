@@ -2,10 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { PaymentQrCode } from "@/lib/payment-qr";
-import { usePaymentLock } from "../payment-lock-context";
 
 export default function PaymentQrPage() {
-  const { setUnlocked } = usePaymentLock();
   const [codes, setCodes] = useState<PaymentQrCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -22,12 +20,6 @@ export default function PaymentQrPage() {
     setError("");
     const res = await fetch("/api/admin/payment-qr");
 
-    if (res.status === 403) {
-      setUnlocked(false);
-      setCodes([]);
-      return;
-    }
-
     const data = await res.json();
     if (!res.ok) {
       setError(data.error || "Could not load payment QR codes");
@@ -40,14 +32,6 @@ export default function PaymentQrPage() {
     load().finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  async function lock() {
-    await fetch("/api/admin/payment-qr/unlock", { method: "DELETE" });
-    setCodes([]);
-    setUnlocked(false);
-    setSuccess("");
-    setError("");
-  }
 
   async function upload(file: File) {
     setUploading(true);
@@ -146,9 +130,6 @@ export default function PaymentQrPage() {
             customer bills when their order is served.
           </p>
         </div>
-        <button type="button" onClick={lock} className="btn-secondary shrink-0">
-          Lock sections
-        </button>
       </div>
 
       {error && (
