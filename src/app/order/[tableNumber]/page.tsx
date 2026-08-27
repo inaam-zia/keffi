@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import DeveloperCredit from "@/components/developer-credit";
+import TableHeading from "@/components/table-heading";
 import OrderClient from "./order-client";
 import { getBranding } from "@/lib/branding";
 import { listOffers } from "@/lib/offers";
@@ -34,8 +35,7 @@ export default async function OrderPage({ params }: Props) {
           <h1 className="text-2xl font-bold text-cafe-900">Table unavailable</h1>
           <p className="mt-2 text-cafe-600">
             <span className="font-bold text-cafe-900">{tableName}</span>
-            {" · "}
-            Table {tableNumber} is currently disabled. Please ask staff for assistance.
+            {" is currently disabled. Please ask staff for assistance."}
           </p>
         </div>
         <DeveloperCredit className="mt-8" />
@@ -63,7 +63,7 @@ export default async function OrderPage({ params }: Props) {
     const message =
       sessionCheck.reason === "session_ended"
         ? "This table session has ended. Please scan the QR code on your table to start a new order."
-        : "Please scan the QR code on your table to order. Typing the link won&apos;t work.";
+        : "Please scan the QR code on your table to order. Typing the link won't work.";
 
     return (
       <main className="order-bg flex min-h-screen flex-col items-center justify-center px-5">
@@ -72,9 +72,7 @@ export default async function OrderPage({ params }: Props) {
           <h1 className="mt-4 text-2xl font-bold text-cafe-900">Scan the table QR</h1>
           <p className="mt-2 text-cafe-600">{message}</p>
           <p className="mt-4 text-sm text-cafe-500">
-            <span className="font-bold text-cafe-900">{tableName}</span>
-            {" · Table "}
-            {tableNumber}
+            <TableHeading tableNumber={tableNumber} tableName={tableName} size="sm" />
           </p>
         </div>
         <DeveloperCredit className="mt-8" />
