@@ -67,8 +67,11 @@
   input[type="datetime-local"],
   input[type="month"],
   input[type="week"] {
+    display: block;
+    width: 100%;
     min-width: 0;
     max-width: 100%;
+    box-sizing: border-box;
   }
 }
 
@@ -147,6 +150,27 @@
     /* 16px minimum — prevents iOS Safari zoom on focus */
     font-size: max(16px, var(--brand-font-size-base));
     color: var(--brand-text);
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .datetime-field {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .datetime-field--empty {
+    color: transparent;
+  }
+
+  .datetime-field--empty:focus {
+    color: var(--brand-text);
+  }
+
+  .datetime-field::-webkit-calendar-picker-indicator {
+    margin-left: auto;
   }
 
   .order-input:focus {

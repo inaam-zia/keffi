@@ -14,9 +14,11 @@ import { formatOfferIncludes } from "@/lib/offers";
 import {
   displayItemDescription,
   displayItemName,
-  getCustomerCopy,
+  type CustomerCopy,
   type CustomerLocale,
 } from "@/lib/customer-copy";
+import { useCustomerLocale } from "@/components/customer-locale-provider";
+import CustomerNav from "@/components/customer-nav";
 import { couponDiscount } from "@/lib/coupons";
 import { maxRedeemablePoints, rupeesFromPoints } from "@/lib/loyalty";
 import { takeReorderLines } from "@/lib/reorder";
@@ -57,10 +59,14 @@ const SLIDE_TRACK_PAD = 0;
 
 function SlideToPlaceOrder({
   label,
+  successLabel,
+  sendingLabel,
   disabled,
   onConfirm,
 }: {
   label: string;
+  successLabel: string;
+  sendingLabel: string;
   disabled?: boolean;
   onConfirm: () => boolean | Promise<boolean>;
 }) {
@@ -164,7 +170,7 @@ function SlideToPlaceOrder({
         <span className="slide-to-order__success-icon" aria-hidden>
           ✓
         </span>
-        <span className="slide-to-order__success-label">Order placed successfully</span>
+        <span className="slide-to-order__success-label">{successLabel}</span>
       </div>
     );
   }
@@ -183,14 +189,14 @@ function SlideToPlaceOrder({
       aria-disabled={disabled || undefined}
     >
       <span className="slide-to-order__label" style={{ opacity: Math.max(0.25, 1 - progress * 1.15) }}>
-        {disabled ? "Sending order…" : label}
+        {disabled ? sendingLabel : label}
       </span>
       <button
         type="button"
         className="slide-to-order__thumb"
         style={{ transform: `translateX(${offset}px)` }}
         disabled={disabled}
-        aria-label="Slide to place order"
+        aria-label={label}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={() => void finishDrag()}
@@ -224,6 +230,7 @@ function AddQtyControl({
   onUpdateQty: (delta: number) => void;
   size?: "sm" | "md";
 }) {
+  const { copy } = useCustomerLocale();
   if (quantity > 0) {
     return (
       <div className={`qty-controls ${size === "sm" ? "gap-1.5" : ""}`}>
@@ -234,7 +241,7 @@ function AddQtyControl({
             onUpdateQty(-1);
           }}
           className={`qty-btn ${size === "sm" ? "h-7 w-7 text-base" : ""}`}
-          aria-label={`Decrease ${name} quantity`}
+          aria-label={`${copy.decreaseQty} ${name}`}
         >
           −
         </button>
@@ -252,7 +259,7 @@ function AddQtyControl({
             onUpdateQty(1);
           }}
           className={`qty-btn qty-btn-plus ${size === "sm" ? "h-7 w-7 text-base" : ""}`}
-          aria-label={`Increase ${name} quantity`}
+          aria-label={`${copy.increaseQty} ${name}`}
         >
           +
         </button>
@@ -268,9 +275,9 @@ function AddQtyControl({
         onAdd();
       }}
       className={size === "sm" ? "menu-add-btn menu-add-btn--sm" : "menu-add-btn"}
-      aria-label={`Add ${name}`}
+      aria-label={`${copy.add} ${name}`}
     >
-      ADD
+      {copy.add}
     </button>
   );
 }
@@ -288,6 +295,7 @@ function OfferCard({
   onAdd: () => void;
   onUpdateQty: (delta: number) => void;
 }) {
+  const { copy } = useCustomerLocale();
   const includes = formatOfferIncludes(offer);
 
   return (
@@ -305,7 +313,7 @@ function OfferCard({
       <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-cafe-500">{includes}</p>
       {isBlocked && (
         <p className="mt-1 text-[10px] font-semibold text-amber-700">
-          Preparing — add more?
+          {copy.preparingAdd}
         </p>
       )}
       <div className="mt-2 flex items-center justify-between gap-1">
@@ -339,6 +347,7 @@ function MenuItemRow({
   onUpdateQty: (delta: number) => void;
   onOpenDetail: () => void;
 }) {
+  const { copy } = useCustomerLocale();
   const name = displayItemName(item, locale);
   const description = displayItemDescription(item, locale);
   return (
@@ -365,22 +374,22 @@ function MenuItemRow({
         <div className="mt-1 flex flex-wrap gap-1">
           {item.is_veg !== false ? (
             <span className="rounded-full bg-green-50 px-1.5 py-0.5 text-[10px] font-semibold text-green-800">
-              Veg
+              {copy.veg}
             </span>
           ) : (
             <span className="rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold text-red-800">
-              Non-veg
+              {copy.nonVeg}
             </span>
           )}
           {item.is_jain ? (
             <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
-              Jain
+              {copy.jain}
             </span>
           ) : null}
         </div>
         {isPreparing ? (
           <p className="mt-1 text-xs font-semibold text-amber-700">
-            Preparing — tap ADD to get more
+            {copy.preparingMore}
           </p>
         ) : null}
         <p className="mt-2 text-sm font-bold text-cafe-800">{formatPrice(item.price)}</p>
@@ -414,6 +423,7 @@ function MenuSuggestionCard({
   onUpdateQty: (delta: number) => void;
   onOpenDetail: () => void;
 }) {
+  const { copy } = useCustomerLocale();
   const name = displayItemName(item, locale);
   return (
     <div
@@ -439,7 +449,7 @@ function MenuSuggestionCard({
         {name}
       </p>
       {isPreparing ? (
-        <p className="mt-0.5 text-[10px] font-semibold text-amber-700">Preparing — add more?</p>
+        <p className="mt-0.5 text-[10px] font-semibold text-amber-700">{copy.preparingAdd}</p>
       ) : null}
       <div className="mt-2 flex items-center justify-between gap-1">
         <span className="text-xs font-bold text-cafe-700">{formatPrice(item.price)}</span>
@@ -533,7 +543,7 @@ function ItemDetailSheet({
   item: MenuItem;
   quantity: number;
   isPreparing: boolean;
-  copy: ReturnType<typeof getCustomerCopy>;
+  copy: CustomerCopy;
   locale: CustomerLocale;
   onClose: () => void;
   onAdd: (notes: string, spiceLevel: string) => void;
@@ -549,7 +559,7 @@ function ItemDetailSheet({
       <button
         type="button"
         className="cart-sheet-backdrop"
-        aria-label="Close item details"
+        aria-label={copy.closeItem}
         onClick={onClose}
       />
       <div className="item-detail-sheet" role="dialog" aria-modal="true" aria-label={name}>
@@ -581,12 +591,12 @@ function ItemDetailSheet({
             <p className="mt-4 text-sm leading-relaxed text-cafe-600">{description}</p>
           ) : null}
           {item.allergens ? (
-            <p className="mt-2 text-xs text-amber-800">Allergens: {item.allergens}</p>
+            <p className="mt-2 text-xs text-amber-800">{copy.allergens}: {item.allergens}</p>
           ) : null}
 
           {isPreparing ? (
             <p className="mt-3 text-xs font-semibold text-amber-700">
-              Kitchen is preparing this — you can still add more
+              {copy.kitchenPreparing}
             </p>
           ) : null}
 
@@ -616,7 +626,7 @@ function ItemDetailSheet({
 
           <div className="mt-5 flex items-center justify-between gap-3">
             <span className="text-sm font-semibold text-cafe-700">
-              {quantity > 0 ? `${quantity} in cart` : "Add to order"}
+              {quantity > 0 ? `${quantity} ${copy.inCart}` : copy.addToOrder}
             </span>
             <AddQtyControl
               name={name}
@@ -660,7 +670,7 @@ export default function OrderClient({
   const [detailItem, setDetailItem] = useState<MenuItem | null>(null);
   const [activeCategoryKey, setActiveCategoryKey] = useState<string | null>(null);
   const [orderPlacedSuccess, setOrderPlacedSuccess] = useState(false);
-  const [locale, setLocale] = useState<CustomerLocale>("en");
+  const { locale, copy } = useCustomerLocale();
   const [dietFilter, setDietFilter] = useState<"all" | "veg" | "jain">("all");
   const [waitMinutes, setWaitMinutes] = useState(5);
   const [busyMode, setBusyMode] = useState(Boolean(branding.busyMode));
@@ -673,21 +683,11 @@ export default function OrderClient({
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
   const [loyaltyRedeem, setLoyaltyRedeem] = useState(0);
   const [orderType, setOrderType] = useState<OrderType>("dine_in");
-  const copy = getCustomerCopy(locale);
   const scrollMenuToTopRef = useRef(false);
   const chipRailRef = useRef<HTMLDivElement>(null);
   const skipObserverRef = useRef(false);
 
   const hasSavedDetails = Boolean(customerName.trim() && normalizePhone(customerPhone));
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("cafe-lang");
-      if (saved === "hi" || saved === "en") setLocale(saved);
-    } catch {
-      /* ignore */
-    }
-  }, []);
 
   useEffect(() => {
     try {
@@ -718,21 +718,17 @@ export default function OrderClient({
         try {
           data = await r.json();
         } catch {
-          setError(
-            r.status === 500
-              ? "Menu server error — Supabase may not be configured on Vercel. Check environment variables and redeploy."
-              : "Could not load menu — check your internet connection"
-          );
+          setError(r.status === 500 ? copy.loadMenuError : copy.loadMenuError);
           return;
         }
         if (!r.ok || data.error) {
-          setError(data.error || "Could not load menu");
+          setError(data.error || copy.loadMenuError);
           return;
         }
         setCategories(data.categories || []);
         setItems((data.items || []).filter((i: MenuItem) => i.available));
       })
-      .catch(() => setError("Could not load menu — check your internet connection"))
+      .catch(() => setError(copy.loadMenuError))
       .finally(() => setLoading(false));
   }, []);
 
@@ -933,10 +929,10 @@ export default function OrderClient({
     }
     const other = visibleItemsByCategory.get("other");
     if (other?.length) {
-      sections.push({ key: "other", title: "Other", items: other });
+      sections.push({ key: "other", title: copy.other, items: other });
     }
     return sections;
-  }, [categories, visibleItemsByCategory]);
+  }, [categories, visibleItemsByCategory, copy.other]);
 
   const visibleOffers = useMemo(() => {
     if (!normalizedSearch) return offers;
@@ -1156,19 +1152,19 @@ export default function OrderClient({
     setCheckoutError("");
 
     if (!name) {
-      setCheckoutError("Please enter your name");
+      setCheckoutError(copy.nameRequired);
       setShowCheckout(true);
       return false;
     }
 
     if (!phone) {
-      setCheckoutError("Please enter your phone number");
+      setCheckoutError(copy.phoneRequired);
       setShowCheckout(true);
       return false;
     }
 
     if (!isValidPhone(phone)) {
-      setCheckoutError("Please enter a valid 10-digit phone number");
+      setCheckoutError(copy.phoneInvalid);
       setShowCheckout(true);
       return false;
     }
@@ -1204,7 +1200,7 @@ export default function OrderClient({
     setSubmitting(false);
 
     if (!res.ok) {
-      setCheckoutError(data.error || "Could not place order");
+      setCheckoutError(data.error || copy.placeFailed);
       return false;
     }
 
@@ -1282,7 +1278,7 @@ export default function OrderClient({
     const data = await res.json();
     if (!res.ok || !data.coupon) {
       setAppliedCoupon(null);
-      setCouponError("Invalid coupon");
+      setCouponError(copy.invalidCoupon);
       return;
     }
     setAppliedCoupon(data.coupon as Coupon);
@@ -1303,7 +1299,6 @@ export default function OrderClient({
         tableName={tableName}
         customerName={customerName}
         branding={branding}
-        locale={locale}
         onAddMore={orderAgain}
       />
     );
@@ -1315,31 +1310,22 @@ export default function OrderClient({
         <div className="min-w-0">
           <CafeBrandingBlock branding={branding} logoSize="md" showTagline />
           <div className="mt-2">
-            <TableHeading tableNumber={tableNumber} tableName={tableName} size="md" />
+            <TableHeading
+              tableNumber={tableNumber}
+              tableName={tableName}
+              size="md"
+              tableWord={copy.table}
+            />
           </div>
           {hasSavedDetails ? (
             <p className="mt-1 text-xs text-brand-subtle">
-              Ordering as <strong className="text-brand-muted">{customerName}</strong>
+              {copy.orderingAs} <strong className="text-brand-muted">{customerName}</strong>
             </p>
           ) : null}
         </div>
 
+        <CustomerNav className="mt-3" />
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            className="rounded-full border border-brand px-2.5 py-1 text-[11px] font-semibold"
-            onClick={() => {
-              const next = locale === "en" ? "hi" : "en";
-              setLocale(next);
-              try {
-                localStorage.setItem("cafe-lang", next);
-              } catch {
-                /* ignore */
-              }
-            }}
-          >
-            {copy.language}
-          </button>
           <span className="text-[11px] text-brand-muted">
             {copy.waitTime} {waitMinutes} {copy.minutes}
           </span>
@@ -1365,7 +1351,7 @@ export default function OrderClient({
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ tableNumber, kind: "waiter" }),
               });
-              setRequestNote(res.ok ? copy.waiterSent : "Could not send");
+              setRequestNote(res.ok ? copy.waiterSent : copy.couldNotSend);
             }}
           >
             {copy.callWaiter}
@@ -1379,7 +1365,7 @@ export default function OrderClient({
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ tableNumber, kind: "bill" }),
               });
-              setRequestNote(res.ok ? copy.billSent : "Could not send");
+              setRequestNote(res.ok ? copy.billSent : copy.couldNotSend);
             }}
           >
             {copy.requestBill}
@@ -1412,7 +1398,7 @@ export default function OrderClient({
                 onClick={viewOrderStatus}
                 className="text-xs font-semibold text-[var(--brand-primary)] underline-offset-2 hover:underline"
               >
-                View order status →
+                {copy.viewOrderStatus}
               </button>
               <button
                 type="button"
@@ -1423,7 +1409,7 @@ export default function OrderClient({
               </button>
             </>
           ) : (
-            <p className="text-xs text-brand-subtle">Tap ADD to build your order</p>
+            <p className="text-xs text-brand-subtle">{copy.tapAdd}</p>
           )}
         </div>
 
@@ -1447,16 +1433,16 @@ export default function OrderClient({
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search dishes, offers…"
+              placeholder={copy.searchPlaceholder}
               className="menu-search-input"
-              aria-label="Search menu"
+              aria-label={copy.searchAria}
             />
             {searchQuery ? (
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full px-2 py-0.5 text-sm font-medium text-cafe-500 hover:text-cafe-700"
-                aria-label="Clear search"
+                aria-label={copy.clearSearch}
               >
                 ×
               </button>
@@ -1470,7 +1456,7 @@ export default function OrderClient({
               ref={chipRailRef}
               className="category-chip-rail__scroll"
               role="tablist"
-              aria-label="Menu categories"
+              aria-label={copy.categoriesAria}
             >
               {visibleSections.map((section) => {
                 const active = activeCategoryKey === section.key;
@@ -1496,9 +1482,9 @@ export default function OrderClient({
       {hasVisibleOffers ? (
         <section className="px-5 py-4">
           <div className="mb-3 space-y-1">
-            <h2 className="text-sm font-bold leading-tight text-cafe-900">Offers &amp; combos</h2>
+            <h2 className="text-sm font-bold leading-tight text-cafe-900">{copy.offersTitle}</h2>
             <p className="text-xs leading-snug text-cafe-500">
-              Bundle deals — add a full combo in one tap
+              {copy.offersSubtitle}
             </p>
           </div>
           <div className="menu-suggestions">
@@ -1517,12 +1503,12 @@ export default function OrderClient({
       ) : null}
 
       {loading ? (
-        <p className="px-5 py-8 text-center text-cafe-500">Loading menu…</p>
+        <p className="px-5 py-8 text-center text-cafe-500">{copy.loadingMenu}</p>
       ) : error && !items.length ? (
         <p className="px-5 py-8 text-center text-red-600">{error}</p>
       ) : normalizedSearch && !hasVisibleMenuItems && !hasVisibleOffers ? (
         <p className="px-5 py-8 text-center text-cafe-500">
-          No items match &ldquo;{searchQuery.trim()}&rdquo;
+          {copy.noMatch} &ldquo;{searchQuery.trim()}&rdquo;
         </p>
       ) : (
         <>
@@ -1531,17 +1517,17 @@ export default function OrderClient({
               <div className="mb-3 space-y-1">
                 <h2 className="text-sm font-bold leading-tight text-cafe-900">
                   {suggestionsSource === "feedback"
-                    ? "Top rated"
+                    ? copy.topRated
                     : suggestionsSource === "sales"
-                      ? "Popular picks"
-                      : "Suggested for you"}
+                      ? copy.popularPicks
+                      : copy.suggested}
                 </h2>
                 <p className="text-xs leading-snug text-cafe-500">
                   {suggestionsSource === "feedback"
-                    ? "Loved by guests — add in one tap"
+                    ? copy.topRatedSub
                     : suggestionsSource === "sales"
-                      ? "Guest favourites — add in one tap"
-                      : "Great choices to start your order"}
+                      ? copy.popularSub
+                      : copy.suggestedSub}
                 </p>
               </div>
               <div className="menu-suggestions">
@@ -1603,7 +1589,7 @@ export default function OrderClient({
         <button
           type="button"
           className="cart-sheet-backdrop"
-          aria-label="Close order sheet"
+          aria-label={copy.closeCart}
           onClick={() => {
             setShowCart(false);
             setShowCheckout(false);
@@ -1622,7 +1608,7 @@ export default function OrderClient({
                 <span className="slide-to-order__success-icon" aria-hidden>
                   ✓
                 </span>
-                <span className="slide-to-order__success-label">Order placed successfully</span>
+                <span className="slide-to-order__success-label">{copy.orderPlaced}</span>
               </div>
             </div>
           ) : !showCart ? (
@@ -1638,17 +1624,17 @@ export default function OrderClient({
                 {cartCount}
               </span>
               <span className="min-w-0 flex-1 text-left font-semibold">
-                View cart
+                {copy.viewCart}
                 <span className="mt-0.5 block text-xs font-medium opacity-90">
-                  {cartCount} item{cartCount === 1 ? "" : "s"} · {formatPrice(payableTotal)}
+                  {cartCount} {cartCount === 1 ? copy.items : copy.itemsPlural} · {formatPrice(payableTotal)}
                 </span>
               </span>
-              <span className="shrink-0 text-sm font-bold tracking-wide">VIEW →</span>
+              <span className="shrink-0 text-sm font-bold tracking-wide">{copy.view}</span>
             </button>
           ) : (
             <div className="cart-sheet__panel flex w-full flex-col">
               <div className="flex items-center justify-between gap-3">
-                <h3 className="text-lg font-bold text-cafe-900">Your cart</h3>
+                <h3 className="text-lg font-bold text-cafe-900">{copy.yourCart}</h3>
                 <button
                   type="button"
                   onClick={() => {
@@ -1658,7 +1644,7 @@ export default function OrderClient({
                   }}
                   className="text-sm font-medium text-cafe-600"
                 >
-                  ← Menu
+                  {copy.menu}
                 </button>
               </div>
 
@@ -1691,7 +1677,7 @@ export default function OrderClient({
                             : updateLineQty(item.lineId, -1)
                         }
                         className="qty-btn"
-                        aria-label="Decrease quantity"
+                        aria-label={copy.decreaseQty}
                       >
                         −
                       </button>
@@ -1704,7 +1690,7 @@ export default function OrderClient({
                             : updateLineQty(item.lineId, 1)
                         }
                         className="qty-btn qty-btn-plus"
-                        aria-label="Increase quantity"
+                        aria-label={copy.increaseQty}
                       >
                         +
                       </button>
@@ -1783,12 +1769,12 @@ export default function OrderClient({
                   </label>
                 ) : null}
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-cafe-600">Items total</span>
+                  <span className="text-cafe-600">{copy.itemsTotal}</span>
                   <span className="font-bold text-cafe-900">{formatPrice(cartTotal)}</span>
                 </div>
                 {couponOff > 0 ? (
                   <div className="flex items-center justify-between text-sm text-green-800">
-                    <span>Coupon</span>
+                    <span>{copy.couponOff}</span>
                     <span>−{formatPrice(couponOff)}</span>
                   </div>
                 ) : null}
@@ -1799,16 +1785,23 @@ export default function OrderClient({
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-cafe-600">To pay</span>
+                  <span className="text-cafe-600">{copy.toPay}</span>
                   <span className="font-bold text-cafe-900">{formatPrice(payableTotal)}</span>
                 </div>
                 <div>
-                  <TableHeading tableNumber={tableNumber} tableName={tableName} size="sm" />
+                  <TableHeading
+                    tableNumber={tableNumber}
+                    tableName={tableName}
+                    size="sm"
+                    tableWord={copy.table}
+                  />
                 </div>
 
                 {!showCheckout ? (
                   <SlideToPlaceOrder
-                    label={`Place order · ${formatPrice(payableTotal)}`}
+                    label={`${copy.placeOrder} · ${formatPrice(payableTotal)}`}
+                    successLabel={copy.orderPlaced}
+                    sendingLabel={copy.sendingOrder}
                     disabled={submitting || busyMode}
                     onConfirm={openCheckout}
                   />
@@ -1817,11 +1810,11 @@ export default function OrderClient({
                     onSubmit={submitOrder}
                     className="space-y-4 rounded-2xl border border-cafe-200 bg-cafe-50/80 p-4"
                   >
-                    <p className="text-sm font-semibold text-cafe-800">Almost done — your details</p>
+                    <p className="text-sm font-semibold text-cafe-800">{copy.almostDone}</p>
 
                     <div>
                       <label htmlFor="checkout-name" className="order-label">
-                        Your name <span className="text-red-500">*</span>
+                        {copy.yourName} <span className="text-red-500">*</span>
                       </label>
                       <input
                         id="checkout-name"
@@ -1838,7 +1831,7 @@ export default function OrderClient({
 
                     <div>
                       <label htmlFor="checkout-phone" className="order-label">
-                        Phone number <span className="text-red-500">*</span>
+                        {copy.phoneNumber} <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
                         <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-cafe-400">
@@ -1861,7 +1854,7 @@ export default function OrderClient({
                     {checkoutError ? <p className="text-sm text-red-600">{checkoutError}</p> : null}
 
                     <button type="submit" disabled={submitting || busyMode} className="order-btn w-full">
-                      {submitting ? "Sending order…" : `Confirm · ${formatPrice(payableTotal)}`}
+                      {submitting ? copy.sendingOrder : `${copy.confirm} · ${formatPrice(payableTotal)}`}
                     </button>
                   </form>
                 )}

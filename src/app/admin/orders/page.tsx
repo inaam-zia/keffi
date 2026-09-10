@@ -65,7 +65,7 @@ function ServedIcon() {
 }
 
 export default function LiveOrdersPage() {
-  const { refreshNewOrders } = useNewOrders();
+  const { refreshNewOrders, refreshTableRequests } = useNewOrders();
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [servedOrders, setServedOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(true);
@@ -299,6 +299,7 @@ export default function LiveOrdersPage() {
                     body: JSON.stringify({ status: "done" }),
                   });
                   await loadRequests();
+                  await refreshTableRequests();
                 }}
               >
                 Done

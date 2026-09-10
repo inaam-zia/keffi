@@ -1,5 +1,14 @@
 /** Short two-tone chime for new orders (no audio file required). */
 export function playNewOrderSound() {
+  playChime(880, 1174.66);
+}
+
+/** Distinct chime for waiter / bill requests. */
+export function playTableRequestSound() {
+  playChime(523.25, 783.99);
+}
+
+function playChime(first: number, second: number) {
   try {
     const ctx = new AudioContext();
     const playTone = (freq: number, start: number, duration: number) => {
@@ -16,8 +25,8 @@ export function playNewOrderSound() {
       osc.stop(start + duration);
     };
     const t = ctx.currentTime;
-    playTone(880, t, 0.15);
-    playTone(1174.66, t + 0.18, 0.2);
+    playTone(first, t, 0.15);
+    playTone(second, t + 0.18, 0.22);
     setTimeout(() => void ctx.close(), 500);
   } catch {
     // Autoplay may be blocked until user interacts with the page

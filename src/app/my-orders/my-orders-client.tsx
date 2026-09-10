@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import CustomerNav from "@/components/customer-nav";
+import { useCustomerLocale } from "@/components/customer-locale-provider";
 import DeveloperCredit from "@/components/developer-credit";
 import TableHeading from "@/components/table-heading";
 import type { CafeBranding } from "@/lib/branding-types";
@@ -29,13 +31,6 @@ type MyOrdersResponse = {
   error?: string;
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  new: "Received",
-  preparing: "Preparing",
-  served: "Served",
-  cancelled: "Cancelled",
-};
-
 function OrderCard({
   order,
   branding,
@@ -43,7 +38,14 @@ function OrderCard({
   order: OrderWithItems;
   branding: CafeBranding;
 }) {
+  const { copy } = useCustomerLocale();
   const [saved, setSaved] = useState(false);
+  const statusLabels: Record<string, string> = {
+    new: copy.received,
+    preparing: copy.preparing,
+    served: copy.served,
+    cancelled: copy.cancelled,
+  };
   const total = getOrderGrandTotal(order, {
     gstEnabled: branding.gstEnabled,
     cgstPercent: branding.cgstPercent,
@@ -70,7 +72,7 @@ function OrderCard({
         </div>
         <div className="text-right">
           <p className="font-bold text-cafe-700">{formatPrice(total)}</p>
-          <p className="text-xs text-cafe-500">{STATUS_LABELS[order.status] || order.status}</p>
+          <p className="text-xs text-cafe-500">{statusLabels[order.status] || order.status}</p>
         </div>
       </div>
       <ul className="mt-3 space-y-1 border-t border-cafe-100 pt-3 text-sm text-cafe-600">
@@ -97,13 +99,14 @@ function OrderCard({
           setSaved(true);
         }}
       >
-        {saved ? "Saved — scan your table QR to add these items" : "Save to reorder at table"}
+        {saved ? copy.savedReorder : copy.saveReorder}
       </button>
     </div>
   );
 }
 
 export default function MyOrdersClient({ cafeName }: Props) {
+  const { copy } = useCustomerLocale();
   const searchParams = useSearchParams();
   const forceVerify = searchParams.get("all") === "1";
 
@@ -262,7 +265,7 @@ export default function MyOrdersClient({ cafeName }: Props) {
   if (step === "loading") {
     return (
       <main className="order-bg flex min-h-screen items-center justify-center px-5">
-        <p className="text-cafe-500">Loading…</p>
+        <p className="text-cafe-500">{copy.loading}</p>
       </main>
     );
   }
@@ -270,18 +273,19 @@ export default function MyOrdersClient({ cafeName }: Props) {
   return (
     <main className="order-bg flex min-h-screen flex-col">
       <div className="mx-auto w-full max-w-lg flex-1 px-5 py-10">
+        <CustomerNav className="mb-6" />
         <div className="order-hero-card">
           <div className="mb-6 text-center">
             <p className="text-xs font-semibold uppercase tracking-widest text-cafe-500">
               {cafeName}
             </p>
-            <h1 className="mt-2 text-2xl font-bold text-cafe-900">My orders</h1>
+            <h1 className="mt-2 text-2xl font-bold text-cafe-900">{copy.myOrders}</h1>
             <p className="mt-2 text-sm text-cafe-600">
               {step === "orders" && mode === "recent"
-                ? "Your most recent order on this device"
+                ? copy.recentOnDevice
                 : step === "orders"
-                  ? "Orders linked to your verified account"
-                  : "Verify with email (free) or phone to see past orders"}
+                  ? copy.ordersLinked
+                  : copy.verifyToSee}
             </p>
           </div>
 
@@ -300,7 +304,7 @@ export default function MyOrdersClient({ cafeName }: Props) {
                       : "text-cafe-500"
                   }`}
                 >
-                  Email (free)
+                  {copy.emailFree}
                 </button>
                 <button
                   type="button"
@@ -314,7 +318,7 @@ export default function MyOrdersClient({ cafeName }: Props) {
                       : "text-cafe-500"
                   }`}
                 >
-                  Phone (SMS)
+                  {copy.phoneSms}
                 </button>
               </div>
 
@@ -322,7 +326,7 @@ export default function MyOrdersClient({ cafeName }: Props) {
                 {channel === "email" ? (
                   <div>
                     <label htmlFor="lookup-email" className="order-label">
-                      Email address
+                      {copy.emailAddress}
                     </label>
                     <input
                       id="lookup-email"
@@ -342,7 +346,7 @@ export default function MyOrdersClient({ cafeName }: Props) {
                 ) : (
                   <div>
                     <label htmlFor="lookup-phone" className="order-label">
-                      Phone number
+                      {copy.phoneNumber}
                     </label>
                     <div className="relative">
                       <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-cafe-400">
@@ -375,7 +379,7 @@ export default function MyOrdersClient({ cafeName }: Props) {
                 )}
 
                 <button type="submit" disabled={sending} className="order-btn w-full">
-                  {sending ? "Sending code…" : "Send verification code"}
+                  {sending ? copy.sendingCode : copy.sendCode}
                 </button>
               </form>
             </div>
@@ -384,7 +388,7 @@ export default function MyOrdersClient({ cafeName }: Props) {
           {step === "otp" && (
             <form onSubmit={verifyOtp} className="space-y-4">
               <p className="text-center text-sm text-cafe-600">
-                Code sent to{" "}
+                {copy.codeSentTo}{" "}
                 <strong>
                   {channel === "email"
                     ? normalizeEmail(email)
@@ -406,7 +410,7 @@ export default function MyOrdersClient({ cafeName }: Props) {
 
               <div>
                 <label htmlFor="otp" className="order-label">
-                  Verification code
+                  {copy.verificationCode}
                 </label>
                 <input
                   id="otp"
@@ -414,7 +418,7 @@ export default function MyOrdersClient({ cafeName }: Props) {
                   inputMode="numeric"
                   pattern="[0-9]*"
                   maxLength={6}
-                  placeholder="6-digit code"
+                  placeholder={copy.codePlaceholder}
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   className="order-input text-center text-lg tracking-[0.3em]"
@@ -426,7 +430,7 @@ export default function MyOrdersClient({ cafeName }: Props) {
               {error && <p className="text-center text-sm text-red-600">{error}</p>}
 
               <button type="submit" disabled={verifying} className="order-btn w-full">
-                {verifying ? "Verifying…" : "Verify & view orders"}
+                {verifying ? copy.verifying : copy.verifyView}
               </button>
 
               <button
@@ -438,7 +442,7 @@ export default function MyOrdersClient({ cafeName }: Props) {
                 }}
                 className="order-btn-secondary w-full"
               >
-                Use a different {channel === "email" ? "email" : "number"}
+                {copy.useDifferent} {channel === "email" ? copy.email : copy.number}
               </button>
             </form>
           )}
@@ -447,7 +451,7 @@ export default function MyOrdersClient({ cafeName }: Props) {
             <div className="space-y-4">
               {mode === "recent" ? (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                  <p className="font-medium">Recent order on this device</p>
+                  <p className="font-medium">{copy.recentDevice}</p>
                   <p className="mt-1 text-amber-800/80">
                     To see all past orders, verify with the email or phone you used when
                     ordering.
@@ -457,13 +461,13 @@ export default function MyOrdersClient({ cafeName }: Props) {
                     onClick={() => setStep("verify")}
                     className="mt-2 font-semibold underline-offset-2 hover:underline"
                   >
-                    Look up all past orders →
+                    {copy.lookUpAll}
                   </button>
                 </div>
               ) : (
                 <div className="flex items-center justify-between gap-3 rounded-xl bg-cafe-50 px-4 py-3 text-sm text-cafe-600">
                   <span>
-                    Verified ·{" "}
+                    {copy.verified} ·{" "}
                     <strong className="text-cafe-900">
                       {identity?.type === "email"
                         ? identity.value
@@ -475,7 +479,7 @@ export default function MyOrdersClient({ cafeName }: Props) {
                     onClick={logout}
                     className="font-medium text-cafe-700 underline-offset-2 hover:underline"
                   >
-                    Sign out
+                    {copy.signOut}
                   </button>
                 </div>
               )}
@@ -484,12 +488,12 @@ export default function MyOrdersClient({ cafeName }: Props) {
 
               {orders.length === 0 ? (
                 <div className="rounded-xl border border-cafe-200 bg-cafe-50/50 px-4 py-10 text-center text-sm text-cafe-600">
-                  <p className="font-medium text-cafe-800">No orders found</p>
+                  <p className="font-medium text-cafe-800">{copy.noOrders}</p>
                   <p className="mt-2">
                     Orders only show up if you used this {channel} when you placed them.
                   </p>
                   <Link href="/" className="order-btn-secondary mt-6 inline-flex w-full">
-                    Scan table QR to order
+                    {copy.scanQrToOrder}
                   </Link>
                 </div>
               ) : (
@@ -505,7 +509,7 @@ export default function MyOrdersClient({ cafeName }: Props) {
 
         <p className="mt-6 text-center text-xs text-cafe-400">
           <Link href="/" className="hover:text-cafe-600">
-            ← Back to home
+            {copy.backHome}
           </Link>
         </p>
         <DeveloperCredit className="mt-4" />

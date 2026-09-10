@@ -21,13 +21,16 @@ export default function TableHeading({
   tableName,
   size = "md",
   className = "",
+  tableWord = "Table",
 }: {
   tableNumber: number;
   tableName?: string | null;
   size?: Size;
   className?: string;
+  tableWord?: string;
 }) {
   const name = tableName?.trim();
+  const fallback = `${tableWord} ${tableNumber}`;
   const showSeparateNumber =
     !name || name.toLowerCase() !== `table ${tableNumber}`.toLowerCase();
 
@@ -35,9 +38,9 @@ export default function TableHeading({
     <span
       className={`inline-flex flex-wrap items-baseline gap-x-2 gap-y-0.5 ${className}`.trim()}
     >
-      <span className={nameClass[size]}>{name || `Table ${tableNumber}`}</span>
+      <span className={nameClass[size]}>{name || fallback}</span>
       {showSeparateNumber && (
-        <span className={numberClass[size]}>· Table {tableNumber}</span>
+        <span className={numberClass[size]}>· {tableWord} {tableNumber}</span>
       )}
     </span>
   );

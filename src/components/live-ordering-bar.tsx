@@ -7,6 +7,7 @@ import {
   liveOrderingDisplayName,
 } from "@/lib/live-ordering";
 import { fetchLiveOrderingItems, LIVE_ORDERING_POLL_MS } from "@/lib/order-poll";
+import { useCustomerLocale } from "@/components/customer-locale-provider";
 
 function tableNumberFromPath(pathname: string): number | null {
   const match = pathname.match(/^\/(?:order|scan)\/(\d+)/);
@@ -17,6 +18,7 @@ function tableNumberFromPath(pathname: string): number | null {
 
 export default function LiveOrderingBar() {
   const pathname = usePathname() || "/";
+  const { copy } = useCustomerLocale();
   const [itemNames, setItemNames] = useState<string[]>([]);
   const tableNumber = tableNumberFromPath(pathname);
 
@@ -55,10 +57,10 @@ export default function LiveOrderingBar() {
   }
 
   return (
-    <div className="live-ordering-bar" aria-label="Other tables are ordering">
+    <div className="live-ordering-bar" aria-label={copy.otherTables}>
       <div className="live-ordering-bar__inner">
         <span className="live-ordering-dot shrink-0" aria-hidden />
-        <p className="live-ordering-bar__label">Other tables are ordering</p>
+        <p className="live-ordering-bar__label">{copy.otherTables}</p>
         <div className="live-ordering-rail">
           {itemNames.map((name) => (
             <button

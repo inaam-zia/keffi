@@ -38,7 +38,7 @@ const allLinks = [
 function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { newOrderCount } = useNewOrders();
+  const { newOrderCount, tableRequestCount, openRequests } = useNewOrders();
   const [lowStockCount, setLowStockCount] = useState(0);
   const [role, setRole] = useState<AdminRole>("owner");
   const links = navLinksForRole(role, allLinks);
@@ -105,7 +105,9 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           {links.map((link) => {
             const active = pathname === link.href;
             const isLiveOrders = link.href === "/admin/orders";
+            const isFloor = link.href === "/admin/floor";
             const isInventory = link.href === "/admin/inventory";
+            const requestBadge = isLiveOrders || isFloor;
             return (
               <Link
                 key={link.href}
@@ -120,6 +122,14 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                     {newOrderCount > 99 ? "99+" : newOrderCount}
                   </span>
                 )}
+                {requestBadge && tableRequestCount > 0 && (
+                  <span
+                    className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-sky-600 px-1.5 text-[10px] font-bold text-white"
+                    title="Waiter / bill requests"
+                  >
+                    {tableRequestCount > 99 ? "99+" : tableRequestCount}
+                  </span>
+                )}
                 {isInventory && lowStockCount > 0 && (
                   <span
                     className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white"
@@ -132,6 +142,29 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
+        {openRequests.length > 0 ? (
+          <div className="border-t border-sky-200 bg-sky-50">
+            <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-2 px-4 py-2 text-sm font-semibold text-sky-950">
+              <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[11px] font-bold text-white">
+                {tableRequestCount}
+              </span>
+              {openRequests.slice(0, 4).map((req) => (
+                <Link
+                  key={req.id}
+                  href="/admin/orders"
+                  className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-sky-900 shadow-sm"
+                >
+                  Table {req.table_number} · {req.kind === "bill" ? "Bill" : "Waiter"}
+                </Link>
+              ))}
+              {openRequests.length > 4 ? (
+                <Link href="/admin/orders" className="text-xs underline">
+                  +{openRequests.length - 4} more
+                </Link>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </header>
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 [padding-bottom:calc(1.5rem+env(safe-area-inset-bottom))]">
         {children}

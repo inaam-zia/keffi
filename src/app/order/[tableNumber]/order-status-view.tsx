@@ -8,17 +8,12 @@ import ThermalReceipt from "@/components/thermal-receipt";
 import { formatPrice } from "@/lib/format";
 import { fetchMyActiveOrders, ORDER_STATUS_POLL_MS } from "@/lib/order-poll";
 import { getOrderGrandTotal } from "@/lib/receipt";
-import { getCustomerCopy, type CustomerLocale } from "@/lib/customer-copy";
+import { useCustomerLocale } from "@/components/customer-locale-provider";
+import CustomerNav from "@/components/customer-nav";
+import { getCustomerCopy } from "@/lib/customer-copy";
 import { buildWhatsAppBillText, whatsappBillUrl } from "@/lib/whatsapp-bill";
 import type { CafeBranding } from "@/lib/branding-types";
 import type { OrderItem, OrderStatus, OrderWithItems } from "@/lib/types";
-
-const STATUS_LABELS: Record<OrderStatus, string> = {
-  new: "Received",
-  preparing: "Preparing",
-  served: "Served",
-  cancelled: "Cancelled",
-};
 
 const STATUS_STEPS: OrderStatus[] = ["new", "preparing", "served"];
 
@@ -30,16 +25,28 @@ type DishFeedback = {
   comment: string | null;
 };
 
-function StatusTimeline({ status }: { status: OrderStatus }) {
+function StatusTimeline({
+  status,
+  copy,
+}: {
+  status: OrderStatus;
+  copy: ReturnType<typeof getCustomerCopy>;
+}) {
   if (status === "cancelled") {
     return (
       <p className="rounded-xl bg-red-50 px-3 py-2 text-center text-sm font-medium text-red-700">
-        Order cancelled
+        {copy.orderCancelled}
       </p>
     );
   }
 
   const currentIdx = STATUS_STEPS.indexOf(status);
+  const labels: Record<OrderStatus, string> = {
+    new: copy.received,
+    preparing: copy.preparing,
+    served: copy.served,
+    cancelled: copy.cancelled,
+  };
 
   return (
     <div className="flex items-center justify-between gap-1">
@@ -68,7 +75,7 @@ function StatusTimeline({ status }: { status: OrderStatus }) {
                 active ? "text-brand-heading" : "text-brand-subtle"
               }`}
             >
-              {STATUS_LABELS[step]}
+              {labels[step]}
             </span>
           </div>
         );
@@ -121,12 +128,13 @@ function DishFeedbackForm({
   const [comment, setComment] = useState(existing?.comment ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const { copy } = useCustomerLocale();
   const submitted = Boolean(existing);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (rating < 1) {
-      setError("Please select a star rating");
+      setError(copy.selectStars);
       return;
     }
 
@@ -169,7 +177,7 @@ function DishFeedbackForm({
             <p className="text-sm font-medium text-brand-heading">
               {item.quantity}× {item.item_name}
             </p>
-            <p className="mt-1 text-xs text-green-700">Thanks for your feedback!</p>
+            <p className="mt-1 text-xs text-green-700">{copy.thanksFeedback}</p>
           </div>
           <div className="text-amber-500" aria-label={`Rated ${existing!.rating} stars`}>
             {"★".repeat(existing!.rating)}
@@ -185,14 +193,14 @@ function DishFeedbackForm({
         <p className="text-sm font-medium text-brand-heading">
           {item.quantity}× {item.item_name}
         </p>
-        <p className="mt-1 text-xs text-brand-muted">How was this dish?</p>
+        <p className="mt-1 text-xs text-brand-muted">{copy.howWasDish}</p>
         <div className="mt-2">
           <StarRating value={rating} disabled={submitting} onChange={setRating} />
         </div>
         <textarea
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          placeholder="Optional comment…"
+          placeholder={copy.optionalComment}
           rows={2}
           className="order-input mt-2 min-h-[60px]"
           disabled={submitting}
@@ -203,7 +211,7 @@ function DishFeedbackForm({
           disabled={submitting || rating < 1}
           className="order-btn mt-3 w-full py-2.5 text-sm"
         >
-          {submitting ? "Saving…" : "Submit feedback"}
+          {submitting ? copy.saving : copy.submitFeedback}
         </button>
       </form>
     </li>
@@ -213,23 +221,31 @@ function DishFeedbackForm({
 function OrderStatusCard({
   order,
   branding,
+  copy,
 }: {
   order: OrderWithItems;
   branding: CafeBranding;
+  copy: ReturnType<typeof getCustomerCopy>;
 }) {
   const gst = {
     gstEnabled: branding.gstEnabled,
     cgstPercent: branding.cgstPercent,
     sgstPercent: branding.sgstPercent,
   };
+  const labels: Record<OrderStatus, string> = {
+    new: copy.received,
+    preparing: copy.preparing,
+    served: copy.served,
+    cancelled: copy.cancelled,
+  };
   return (
     <div className="rounded-2xl border border-brand bg-brand-surface p-4 shadow-sm">
       <div className="mb-4">
-        <StatusTimeline status={order.status} />
+        <StatusTimeline status={order.status} copy={copy} />
       </div>
       <div className="mb-3 flex items-center justify-between">
         <p className="text-sm font-semibold text-brand-heading">
-          {STATUS_LABELS[order.status]}
+          {labels[order.status]}
         </p>
         <p className="font-bold text-brand-muted">
           {formatPrice(getOrderGrandTotal(order, gst))}
@@ -298,7 +314,6 @@ type Props = {
   tableName: string;
   customerName: string;
   branding: CafeBranding;
-  locale?: CustomerLocale;
   onAddMore: () => void;
 };
 
@@ -307,9 +322,9 @@ export default function OrderStatusView({
   tableName,
   customerName,
   branding,
-  locale = "en",
   onAddMore,
 }: Props) {
+  const { copy } = useCustomerLocale();
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(true);
   const [feedbackByItemId, setFeedbackByItemId] = useState<Map<string, DishFeedback>>(
@@ -326,7 +341,6 @@ export default function OrderStatusView({
   const [wifiPassword, setWifiPassword] = useState(branding.wifiPassword);
   const [splitCount, setSplitCount] = useState(2);
   const [requestNote, setRequestNote] = useState("");
-  const copy = getCustomerCopy(locale);
 
   const loadPaymentQr = useCallback(async () => {
     const res = await fetch(`/api/payment-qr?_=${Date.now()}`, { cache: "no-store" });
@@ -436,7 +450,7 @@ export default function OrderStatusView({
     return orders[0]?.status ?? null;
   }, [orders, allCancelled, allServed]);
 
-  const firstName = customerName.trim().split(/\s+/)[0] || "there";
+  const firstName = customerName.trim().split(/\s+/)[0] || copy.there;
   const gst = {
     gstEnabled: billBranding.gstEnabled,
     cgstPercent: billBranding.cgstPercent,
@@ -469,7 +483,7 @@ export default function OrderStatusView({
       body: JSON.stringify({ tableNumber, kind }),
     });
     setRequestNote(
-      res.ok ? (kind === "waiter" ? copy.waiterSent : copy.billSent) : "Could not send"
+      res.ok ? (kind === "waiter" ? copy.waiterSent : copy.billSent) : copy.couldNotSend
     );
   }
 
@@ -483,6 +497,7 @@ export default function OrderStatusView({
     <main className="order-bg mx-auto min-h-screen max-w-lg px-5 py-8">
       <div className="mb-6">
         <CafeBrandingBlock branding={branding} logoSize="md" showTagline align="center" />
+        <CustomerNav className="mt-4 justify-center" />
       </div>
 
       <div className="order-hero-card space-y-6">
@@ -490,17 +505,17 @@ export default function OrderStatusView({
           {allServed && orders.length > 0 && !allCancelled ? (
             <>
               <div className="success-check">✓</div>
-              <h1 className="text-2xl font-bold text-brand-heading">Enjoy your meal!</h1>
+              <h1 className="text-2xl font-bold text-brand-heading">{copy.enjoyMeal}</h1>
               <p className="mt-2 text-sm text-brand-muted">
-                Your bill is ready below. Thanks {firstName}!
+                {copy.billReady} {firstName}!
               </p>
             </>
           ) : allCancelled ? (
             <>
               <div className="status-hero status-hero--cancelled">!</div>
-              <h1 className="text-2xl font-bold text-brand-heading">Order cancelled</h1>
+              <h1 className="text-2xl font-bold text-brand-heading">{copy.orderCancelled}</h1>
               <p className="mt-2 text-sm text-brand-muted">
-                Please contact staff if you need help, {firstName}.
+                {copy.contactStaff} {firstName}.
               </p>
             </>
           ) : headlineStatus === "preparing" ? (
@@ -508,10 +523,15 @@ export default function OrderStatusView({
               <div className="status-hero status-hero--preparing" aria-hidden>
                 <span className="status-hero__pulse" />
               </div>
-              <h1 className="text-2xl font-bold text-brand-heading">Kitchen is on it</h1>
+              <h1 className="text-2xl font-bold text-brand-heading">{copy.kitchenOnIt}</h1>
               <p className="mt-2 text-sm text-brand-muted">
-                Hang tight {firstName} — we&apos;ll bring it to{" "}
-                <TableHeading tableNumber={tableNumber} tableName={tableName} size="sm" />
+                {copy.hangTight} {firstName} {copy.wellBring}{" "}
+                <TableHeading
+                  tableNumber={tableNumber}
+                  tableName={tableName}
+                  size="sm"
+                  tableWord={copy.table}
+                />
               </p>
             </>
           ) : (
@@ -519,10 +539,15 @@ export default function OrderStatusView({
               <div className="status-hero status-hero--received" aria-hidden>
                 ✓
               </div>
-              <h1 className="text-2xl font-bold text-brand-heading">Order received</h1>
+              <h1 className="text-2xl font-bold text-brand-heading">{copy.orderReceived}</h1>
               <p className="mt-2 text-sm text-brand-muted">
-                Thanks {firstName} — tracking your order for{" "}
-                <TableHeading tableNumber={tableNumber} tableName={tableName} size="sm" />
+                {copy.thanks} {firstName} {copy.trackingOrder}{" "}
+                <TableHeading
+                  tableNumber={tableNumber}
+                  tableName={tableName}
+                  size="sm"
+                  tableWord={copy.table}
+                />
               </p>
             </>
           )}
@@ -559,12 +584,12 @@ export default function OrderStatusView({
 
         <div className="space-y-3">
           <h2 className="text-sm font-bold uppercase tracking-wider text-brand-subtle">
-            {allServed && !allCancelled ? "Your bill" : "Order details"}
+            {allServed && !allCancelled ? copy.yourBill : copy.orderDetails}
           </h2>
           {loading ? (
-            <p className="text-center text-sm text-brand-muted">Loading status…</p>
+            <p className="text-center text-sm text-brand-muted">{copy.loadingStatus}</p>
           ) : orders.length === 0 ? (
-            <p className="text-center text-sm text-brand-muted">No active orders</p>
+            <p className="text-center text-sm text-brand-muted">{copy.noActiveOrders}</p>
           ) : consolidatedOrder ? (
             <div className="rounded-2xl border border-brand bg-brand-surface p-4 shadow-sm">
               <ThermalReceipt
@@ -578,7 +603,7 @@ export default function OrderStatusView({
               />
               <div className="mt-5 border-t border-brand pt-4">
                 <p className="mb-3 text-xs font-bold uppercase tracking-wider text-brand-subtle">
-                  Rate your dishes
+                  {copy.rateDishes}
                 </p>
                 <ul className="space-y-2">
                   {consolidatedOrder.order_items.map((item) => (
@@ -595,20 +620,20 @@ export default function OrderStatusView({
             </div>
           ) : (
             orders.map((order) => (
-              <OrderStatusCard key={order.id} order={order} branding={billBranding} />
+              <OrderStatusCard key={order.id} order={order} branding={billBranding} copy={copy} />
             ))
           )}
         </div>
 
         {allCancelled ? (
           <p className="rounded-xl bg-red-50 px-4 py-3 text-center text-sm text-red-800">
-            Your order was cancelled. Please contact staff if you need help.
+            {copy.orderCancelledHelp}
           </p>
         ) : null}
 
         {allServed && orders.length > 0 && !allCancelled ? (
           <p className="rounded-xl bg-green-50 px-4 py-3 text-center text-sm text-green-800">
-            Enjoy your meal! Rate your dishes above to help us improve.
+            {copy.enjoyRate}
           </p>
         ) : null}
 
@@ -643,12 +668,12 @@ export default function OrderStatusView({
         ) : null}
 
         <button type="button" onClick={onAddMore} className="order-btn w-full">
-          {allServed || allCancelled ? "Order more items" : "Add more items"}
+          {allServed || allCancelled ? copy.orderMore : copy.addMore}
         </button>
 
         {!allServed && !allCancelled ? (
           <p className="text-center text-xs text-brand-subtle">
-            Status updates automatically
+            {copy.statusAuto}
           </p>
         ) : null}
       </div>

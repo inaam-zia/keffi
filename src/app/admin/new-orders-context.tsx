@@ -9,23 +9,28 @@ import {
   useRef,
   useState,
 } from "react";
-import { playNewOrderSound } from "@/lib/admin-notification-sound";
+import { playNewOrderSound, playTableRequestSound } from "@/lib/admin-notification-sound";
 import { formatTableRef } from "@/lib/tables";
 import { fetchJsonArray } from "@/lib/parse-api";
-import type { OrderWithItems } from "@/lib/types";
+import type { OrderWithItems, TableRequest } from "@/lib/types";
 
 const POLL_MS = 5000;
+const REQUEST_POLL_MS = 2500;
 const BASE_TITLE = "Cafe Admin";
 
 type Snackbar = {
   id: string;
   message: string;
   href?: string;
+  tone?: "order" | "request";
 };
 
 type NewOrdersContextValue = {
   newOrderCount: number;
+  tableRequestCount: number;
+  openRequests: TableRequest[];
   refreshNewOrders: () => Promise<void>;
+  refreshTableRequests: () => Promise<void>;
 };
 
 const NewOrdersContext = createContext<NewOrdersContextValue | null>(null);
@@ -55,9 +60,19 @@ function SnackbarStack({
       {items.map((item) => (
         <div
           key={item.id}
-          className="pointer-events-auto flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 shadow-lg"
+          className={`pointer-events-auto flex items-center justify-between gap-3 rounded-xl border px-4 py-3 shadow-lg ${
+            item.tone === "request"
+              ? "border-sky-200 bg-sky-50"
+              : "border-amber-200 bg-amber-50"
+          }`}
         >
-          <p className="text-sm font-medium text-amber-950">{item.message}</p>
+          <p
+            className={`text-sm font-medium ${
+              item.tone === "request" ? "text-sky-950" : "text-amber-950"
+            }`}
+          >
+            {item.message}
+          </p>
           <div className="flex shrink-0 items-center gap-2">
             {item.href ? (
               <Link
@@ -85,35 +100,74 @@ function SnackbarStack({
 
 export function NewOrdersProvider({ children }: { children: React.ReactNode }) {
   const [newOrderCount, setNewOrderCount] = useState(0);
+  const [openRequests, setOpenRequests] = useState<TableRequest[]>([]);
   const [snackbars, setSnackbars] = useState<Snackbar[]>([]);
   const knownIdsRef = useRef<Set<string> | null>(null);
+  const knownRequestIdsRef = useRef<Set<string> | null>(null);
   const pollingRef = useRef(false);
+  const requestPollingRef = useRef(false);
 
   const dismissSnackbar = useCallback((id: string) => {
     setSnackbars((prev) => prev.filter((s) => s.id !== id));
   }, []);
 
-  const pushSnackbar = useCallback((message: string, href?: string) => {
+  const pushSnackbar = useCallback((message: string, href?: string, tone?: Snackbar["tone"]) => {
     const id = `snack-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    setSnackbars((prev) => [...prev.slice(-2), { id, message, href }]);
-    setTimeout(() => dismissSnackbar(id), 6000);
+    setSnackbars((prev) => [...prev.slice(-2), { id, message, href, tone }]);
+    setTimeout(() => dismissSnackbar(id), 8000);
   }, [dismissSnackbar]);
 
-  const pushNativeNotification = useCallback((title: string, body: string) => {
+  const pushNativeNotification = useCallback((title: string, body: string, href = "/admin/orders") => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
     if (Notification.permission !== "granted") return;
 
     const notification = new Notification(title, {
       body,
-      tag: `order-${Date.now()}`,
+      tag: `cafe-${title}-${Date.now()}`,
     });
 
     notification.onclick = () => {
       window.focus();
-      window.location.href = "/admin/orders";
+      window.location.href = href;
       notification.close();
     };
   }, []);
+
+  const refreshTableRequests = useCallback(async () => {
+    if (requestPollingRef.current) return;
+    requestPollingRef.current = true;
+    try {
+      const res = await fetch("/api/table-requests", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      const requests = (data.requests ?? []) as TableRequest[];
+      setOpenRequests(requests);
+
+      const currentIds = new Set(requests.map((r) => r.id));
+      if (knownRequestIdsRef.current === null) {
+        knownRequestIdsRef.current = currentIds;
+        return;
+      }
+
+      const fresh = requests.filter((r) => !knownRequestIdsRef.current!.has(r.id));
+      if (fresh.length > 0) {
+        playTableRequestSound();
+        for (const req of fresh) {
+          const kindLabel = req.kind === "bill" ? "Bill requested" : "Waiter called";
+          const message = `${kindLabel} — Table ${req.table_number}`;
+          pushSnackbar(message, "/admin/orders", "request");
+          if (document.visibilityState !== "visible") {
+            pushNativeNotification(kindLabel, message, "/admin/orders");
+          }
+        }
+      }
+      knownRequestIdsRef.current = currentIds;
+    } catch {
+      /* table may not exist yet */
+    } finally {
+      requestPollingRef.current = false;
+    }
+  }, [pushNativeNotification, pushSnackbar]);
 
   const refreshNewOrders = useCallback(async () => {
     if (pollingRef.current) return;
@@ -141,7 +195,6 @@ export function NewOrdersProvider({ children }: { children: React.ReactNode }) {
           const message = `New order — ${tableRef} · ${name}`;
           pushSnackbar(message, "/admin/orders");
 
-          // Show native browser notifications when admin tab is inactive/backgrounded.
           if (document.visibilityState !== "visible") {
             pushNativeNotification("New order received", message);
           }
@@ -154,46 +207,55 @@ export function NewOrdersProvider({ children }: { children: React.ReactNode }) {
     }
   }, [pushNativeNotification, pushSnackbar]);
 
+  const tableRequestCount = openRequests.length;
+  const alertCount = newOrderCount + tableRequestCount;
+
   useEffect(() => {
     document.title =
-      newOrderCount > 0 ? `(${newOrderCount}) ${BASE_TITLE}` : BASE_TITLE;
+      alertCount > 0 ? `(${alertCount}) ${BASE_TITLE}` : BASE_TITLE;
     return () => {
       document.title = BASE_TITLE;
     };
-  }, [newOrderCount]);
+  }, [alertCount]);
 
   useEffect(() => {
     void refreshNewOrders();
-
-    function tick() {
-      void refreshNewOrders();
-    }
-
-    const interval = setInterval(tick, POLL_MS);
+    void refreshTableRequests();
+    const orderInterval = setInterval(() => void refreshNewOrders(), POLL_MS);
+    const requestInterval = setInterval(() => void refreshTableRequests(), REQUEST_POLL_MS);
 
     function onVisible() {
       if (document.visibilityState === "visible") {
         void refreshNewOrders();
+        void refreshTableRequests();
       }
     }
 
     document.addEventListener("visibilitychange", onVisible);
     return () => {
-      clearInterval(interval);
+      clearInterval(orderInterval);
+      clearInterval(requestInterval);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [refreshNewOrders]);
+  }, [refreshNewOrders, refreshTableRequests]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
     if (Notification.permission === "default") {
-      // Ask once so background notifications can work for new incoming orders.
       void Notification.requestPermission();
     }
   }, []);
 
   return (
-    <NewOrdersContext.Provider value={{ newOrderCount, refreshNewOrders }}>
+    <NewOrdersContext.Provider
+      value={{
+        newOrderCount,
+        tableRequestCount,
+        openRequests,
+        refreshNewOrders,
+        refreshTableRequests,
+      }}
+    >
       {children}
       <SnackbarStack items={snackbars} onDismiss={dismissSnackbar} />
     </NewOrdersContext.Provider>
