@@ -9,6 +9,8 @@ import { fetchJsonArray } from "@/lib/parse-api";
 import { getOrderGrandTotal } from "@/lib/receipt";
 import type { OrderStatus, OrderWithItems } from "@/lib/types";
 import TableHeading from "@/components/table-heading";
+import AdminTableMap from "@/components/admin-table-map";
+import type { FloorTable } from "@/lib/floor-map";
 import { useNewOrders } from "../new-orders-context";
 
 const statusLabels: Record<OrderStatus, string> = {
@@ -81,6 +83,9 @@ export default function LiveOrdersPage() {
   const [requests, setRequests] = useState<
     { id: string; table_number: number; kind: string }[]
   >([]);
+  const [floorTables, setFloorTables] = useState<FloorTable[]>([]);
+  const [floorLoading, setFloorLoading] = useState(true);
+  const [selectedTable, setSelectedTable] = useState<number | null>(null);
 
   const gst = useMemo(
     () => ({
@@ -112,6 +117,17 @@ export default function LiveOrdersPage() {
     setRequests(data.requests ?? []);
   }
 
+  async function loadFloor() {
+    try {
+      const res = await fetch("/api/admin/floor", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      setFloorTables(data.tables ?? []);
+    } finally {
+      setFloorLoading(false);
+    }
+  }
+
   async function loadLowStock() {
     try {
       const res = await fetch("/api/admin/inventory/alerts");
@@ -127,6 +143,7 @@ export default function LiveOrdersPage() {
     loadOrders();
     loadLowStock();
     loadRequests();
+    loadFloor();
     fetch(`/api/branding?_=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data: CafeBranding) =>
@@ -142,6 +159,7 @@ export default function LiveOrdersPage() {
     const interval = setInterval(() => {
       loadOrders();
       loadRequests();
+      loadFloor();
     }, 8000);
     const stockInterval = setInterval(loadLowStock, 30000);
     return () => {
@@ -204,6 +222,67 @@ export default function LiveOrdersPage() {
     return Array.from(map.values()).sort((a, b) => a.tableNumber - b.tableNumber);
   }, [orders, servedOrders, clearedTables, gst]);
 
+  const mapTables = useMemo(() => {
+    const kitchenTables = new Set(orders.map((o) => o.table_number));
+    const cleared = new Set(clearedTables);
+    return floorTables.map((table) => {
+      if (!cleared.has(table.tableNumber) || kitchenTables.has(table.tableNumber)) {
+        return table;
+      }
+      return {
+        ...table,
+        state: table.enabled ? "free" : "disabled",
+        servedCount: 0,
+        ticketCount: table.newCount + table.preparingCount,
+        bill: false,
+      } satisfies FloorTable;
+    });
+  }, [floorTables, clearedTables, orders]);
+
+  const visibleOrders = useMemo(
+    () =>
+      selectedTable == null
+        ? orders
+        : orders.filter((order) => order.table_number === selectedTable),
+    [orders, selectedTable]
+  );
+
+  const visiblePayable = useMemo(
+    () =>
+      selectedTable == null
+        ? payableTables
+        : payableTables.filter((table) => table.tableNumber === selectedTable),
+    [payableTables, selectedTable]
+  );
+
+  const visibleOpenTables = useMemo(
+    () =>
+      selectedTable == null
+        ? openTables
+        : openTables.filter((table) => table.tableNumber === selectedTable),
+    [openTables, selectedTable]
+  );
+
+  const selectedMeta = selectedTable == null
+    ? null
+    : mapTables.find((table) => table.tableNumber === selectedTable) || {
+        tableNumber: selectedTable,
+        label: null as string | null,
+        state: "free" as const,
+      };
+
+  function selectTable(tableNumber: number | null) {
+    setSelectedTable(tableNumber);
+    if (tableNumber != null) {
+      window.requestAnimationFrame(() => {
+        document.getElementById("live-order-list")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+    }
+  }
+
   async function updateStatus(orderId: string, status: OrderStatus) {
     setUpdatingId(orderId);
     setSuccess("");
@@ -214,6 +293,7 @@ export default function LiveOrdersPage() {
         body: JSON.stringify({ status }),
       });
       await loadOrders();
+      await loadFloor();
       await refreshNewOrders();
     } finally {
       setUpdatingId(null);
@@ -253,6 +333,7 @@ export default function LiveOrdersPage() {
         prev.includes(tableNumber) ? prev : [...prev, tableNumber]
       );
       await loadOrders();
+      await loadFloor();
     } finally {
       setClosingTable(null);
     }
@@ -279,6 +360,40 @@ export default function LiveOrdersPage() {
         </div>
       )}
 
+      <div className="card space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-cafe-500">
+              Table map
+            </h3>
+            <p className="text-sm text-cafe-600">
+              Tap a table to jump to its tickets. Tap again to show all.
+            </p>
+          </div>
+          {selectedTable != null ? (
+            <button
+              type="button"
+              className="text-xs font-semibold text-[var(--brand-primary)] underline-offset-2 hover:underline"
+              onClick={() => selectTable(null)}
+            >
+              Show all tables
+            </button>
+          ) : null}
+        </div>
+        <AdminTableMap
+          tables={mapTables}
+          selectedTable={selectedTable}
+          onSelect={selectTable}
+          loading={floorLoading}
+        />
+        {selectedMeta ? (
+          <p className="text-xs font-medium text-cafe-600">
+            Showing {selectedMeta.label?.trim() || `Table ${selectedMeta.tableNumber}`}
+            {selectedMeta.state === "free" ? " — free right now" : ""}.
+          </p>
+        ) : null}
+      </div>
+
       {requests.length > 0 && (
         <div className="card space-y-2 border border-amber-300 bg-amber-50">
           <h3 className="text-sm font-bold uppercase tracking-wider text-amber-900">
@@ -287,7 +402,15 @@ export default function LiveOrdersPage() {
           {requests.map((req) => (
             <div key={req.id} className="flex items-center justify-between gap-2">
               <p className="text-sm font-semibold">
-                Table {req.table_number} · {req.kind === "bill" ? "Wants the bill" : "Call waiter"}
+                <button
+                  type="button"
+                  className="underline-offset-2 hover:underline"
+                  onClick={() => selectTable(req.table_number)}
+                >
+                  Table {req.table_number}
+                </button>
+                {" · "}
+                {req.kind === "bill" ? "Wants the bill" : "Call waiter"}
               </p>
               <button
                 type="button"
@@ -299,6 +422,7 @@ export default function LiveOrdersPage() {
                     body: JSON.stringify({ status: "done" }),
                   });
                   await loadRequests();
+                  await loadFloor();
                   await refreshTableRequests();
                 }}
               >
@@ -328,7 +452,7 @@ export default function LiveOrdersPage() {
         </div>
       )}
 
-      {payableTables.length > 0 && (
+      {visiblePayable.length > 0 && (
         <div className="card space-y-3 border border-green-200 bg-green-50/40">
           <div>
             <h3 className="text-sm font-bold uppercase tracking-wider text-green-800">
@@ -340,7 +464,7 @@ export default function LiveOrdersPage() {
             </p>
           </div>
           <div className="space-y-2">
-            {payableTables.map((table) => (
+            {visiblePayable.map((table) => (
               <div
                 key={table.tableNumber}
                 className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-green-200 bg-white px-3 py-2.5"
@@ -376,7 +500,7 @@ export default function LiveOrdersPage() {
         </div>
       )}
 
-      {openTables.length > 0 && (
+      {visibleOpenTables.length > 0 && (
         <div className="card space-y-3">
           <div>
             <h3 className="text-sm font-bold uppercase tracking-wider text-cafe-500">
@@ -387,7 +511,7 @@ export default function LiveOrdersPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {openTables.map((table) => (
+            {visibleOpenTables.map((table) => (
               <button
                 key={table.tableNumber}
                 type="button"
@@ -404,11 +528,20 @@ export default function LiveOrdersPage() {
         </div>
       )}
 
+      <div id="live-order-list">
       {loading ? (
         <p className="text-cafe-500">Loading…</p>
-      ) : orders.length === 0 ? (
+      ) : visibleOrders.length === 0 ? (
         <div className="card py-12 text-center text-cafe-500">
-          {payableTables.length > 0 ? (
+          {selectedTable != null ? (
+            <>
+              No kitchen tickets for{" "}
+              {selectedMeta?.label?.trim() || `Table ${selectedTable}`}.{" "}
+              {visiblePayable.length > 0
+                ? "Use Mark paid & clear above if guests are settling."
+                : "This table is free."}
+            </>
+          ) : payableTables.length > 0 ? (
             <>
               No kitchen orders right now. Use{" "}
               <span className="font-semibold text-cafe-800">Mark paid &amp; clear</span> above
@@ -430,7 +563,7 @@ export default function LiveOrdersPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {orders.map((order) => (
+          {visibleOrders.map((order) => (
             <div key={order.id} className="card space-y-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -447,6 +580,11 @@ export default function LiveOrdersPage() {
                     >
                       {statusLabels[order.status]}
                     </span>
+                    {order.order_type === "takeaway" ? (
+                      <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-800">
+                        Parcel
+                      </span>
+                    ) : null}
                   </div>
                   <p className="text-sm text-cafe-500">
                     {order.customer_name || "Guest"}
@@ -515,6 +653,7 @@ export default function LiveOrdersPage() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }

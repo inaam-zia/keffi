@@ -28,7 +28,6 @@ export default function CustomerNav({
     { href: "/", label: copy.navHome },
     { href: "/reserve", label: copy.navReserve },
     { href: "/my-orders", label: copy.navMyOrders },
-    { href: "/admin/login", label: copy.navAdmin },
   ];
 
   return (
