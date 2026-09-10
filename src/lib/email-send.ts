@@ -23,7 +23,7 @@ export async function sendOtpEmail(email: string, code: string): Promise<SendRes
   }
 
   const from =
-    process.env.RESEND_FROM_EMAIL || "Keffi <onboarding@resend.dev>";
+    process.env.RESEND_FROM_EMAIL || "Teakuzz <onboarding@resend.dev>";
   const cafeName = getCafeName();
 
   try {

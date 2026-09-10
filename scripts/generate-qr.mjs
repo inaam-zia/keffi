@@ -9,7 +9,7 @@ const root = join(__dirname, "..");
 const baseUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
   (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`) ||
-  "https://keffi.vercel.app";
+  "https://teakuzz.vercel.app";
 
 const outDir = join(root, "public", "qr");
 mkdirSync(outDir, { recursive: true });
@@ -140,7 +140,7 @@ if (tables.length > 1) {
   </style>
 </head>
 <body>
-  <h1>Keffi — Scan to Order</h1>
+  <h1>Teakuzz — Scan to Order</h1>
   <div class="grid">
     ${results
       .map(

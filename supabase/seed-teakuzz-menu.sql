@@ -1,4 +1,4 @@
--- Keffi menu — run in Supabase SQL Editor to replace the sample menu
+-- Teakuzz menu — run in Supabase SQL Editor to replace the sample menu
 -- Safe: order_items store item names, not menu_item IDs
 
 delete from menu_items;
@@ -15,7 +15,7 @@ insert into menu_categories (name, sort_order) values
   ('Rice', 8),
   ('Sharing Bites', 9),
   ('Mouth-Melting Cheese Bites', 10),
-  ('Keffi Signatures', 11),
+  ('Teakuzz Signatures', 11),
   ('Pizza — Thin Crust', 12),
   ('Pasta', 13),
   ('Desserts', 14),
@@ -68,9 +68,9 @@ from (values
   ('Mouth-Melting Cheese Bites', 'Crispy Onion Rings', '', 195, null),
   ('Mouth-Melting Cheese Bites', 'Chipotle Chicken Taco', '', 245, null),
   ('Mouth-Melting Cheese Bites', 'Tangy Cottage Cheese Taco', '', 245, null),
-  ('Keffi Signatures', 'Falafel Platter', '', 295, null),
-  ('Keffi Signatures', 'Nachos with Salsa and Sour Cream', '', 245, null),
-  ('Keffi Signatures', 'Cheese Garlic Bread', '', 195, null),
+  ('Teakuzz Signatures', 'Falafel Platter', '', 295, null),
+  ('Teakuzz Signatures', 'Nachos with Salsa and Sour Cream', '', 245, null),
+  ('Teakuzz Signatures', 'Cheese Garlic Bread', '', 195, null),
   ('Pizza — Thin Crust', 'Margherita Pizza', '', 395, null),
   ('Pizza — Thin Crust', 'Mutton Pepperoni Pizza', '', 445, null),
   ('Pizza — Thin Crust', 'Chicken Tikka Pizza', '', 395, null),
@@ -104,7 +104,7 @@ from (values
 join menu_categories c on c.name = v.cat;
 
 update cafe_settings
-set app_name = 'Keffi',
+set app_name = 'Teakuzz',
     tagline = 'Crafted to Refresh',
-    logo_url = '/keffi-logo.png'
+    logo_url = '/teakuzz-logo.png'
 where id = 1;

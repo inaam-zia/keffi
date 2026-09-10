@@ -36,7 +36,7 @@ const categoryFile = {
   Rice: "rice.jpg",
   "Sharing Bites": "sharing-bites.jpg",
   "Mouth-Melting Cheese Bites": "cheese-bites.jpg",
-  "Keffi Signatures": "keffi-signatures.jpg",
+  "Teakuzz Signatures": "teakuzz-signatures.jpg",
   "Pizza — Thin Crust": "pizza.jpg",
   Pasta: "pasta.jpg",
   Desserts: "desserts.jpg",

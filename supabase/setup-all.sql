@@ -1,5 +1,5 @@
 -- ============================================================
--- Keffi — full database setup (safe to re-run)
+-- Teakuzz — full database setup (safe to re-run)
 -- Paste into Supabase SQL Editor → Run
 -- Then: npm run seed:menu
 -- ============================================================
@@ -99,8 +99,8 @@ where coalesce(trim(label), '') = '';
 
 create table if not exists cafe_settings (
   id int primary key default 1 check (id = 1),
-  app_name text not null default 'Keffi',
-  logo_url text default '/keffi-logo.png',
+  app_name text not null default 'Teakuzz',
+  logo_url text default '/teakuzz-logo.png',
   tagline text default 'Crafted to Refresh',
   theme jsonb not null default '{}'::jsonb,
   updated_at timestamptz default now()
@@ -115,14 +115,14 @@ alter table cafe_settings add column if not exists admin_password_hash text;
 alter table cafe_settings add column if not exists payment_qr_password_hash text;
 
 insert into cafe_settings (id, app_name, logo_url, tagline)
-values (1, 'Keffi', '/keffi-logo.png', 'Crafted to Refresh')
+values (1, 'Teakuzz', '/teakuzz-logo.png', 'Crafted to Refresh')
 on conflict (id) do nothing;
 
 update cafe_settings
 set
-  app_name = 'Keffi',
+  app_name = 'Teakuzz',
   tagline = 'Crafted to Refresh',
-  logo_url = coalesce(nullif(logo_url, ''), '/keffi-logo.png'),
+  logo_url = coalesce(nullif(logo_url, ''), '/teakuzz-logo.png'),
   theme = jsonb_set(coalesce(theme, '{}'::jsonb), '{fontFamily}', '"open-sans"'),
   updated_at = now()
 where id = 1;

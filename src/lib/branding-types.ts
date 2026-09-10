@@ -102,8 +102,8 @@ export function resolveFontFamilyId(raw?: string | null): string {
 export function getDefaultBranding(): CafeBranding {
   const envName = process.env.NEXT_PUBLIC_CAFE_NAME;
   return {
-    appName: envName || "Keffi",
-    logoUrl: "/keffi-logo.png",
+    appName: envName || "Teakuzz",
+    logoUrl: "/teakuzz-logo.png",
     tagline: "Crafted to Refresh",
     theme: { ...DEFAULT_THEME },
     gstEnabled: false,

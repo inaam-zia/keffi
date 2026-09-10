@@ -75,9 +75,9 @@ async function main() {
   const { error: settingsError } = await supabase
     .from("cafe_settings")
     .update({
-      app_name: "Keffi",
+      app_name: "Teakuzz",
       tagline: "Crafted to Refresh",
-      logo_url: "/keffi-logo.png",
+      logo_url: "/teakuzz-logo.png",
     })
     .eq("id", 1);
 
@@ -86,7 +86,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`Done! Keffi menu loaded (${rows.length} items, ${categories.length} categories).`);
+  console.log(`Done! Teakuzz menu loaded (${rows.length} items, ${categories.length} categories).`);
 }
 
 main();

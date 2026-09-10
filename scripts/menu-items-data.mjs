@@ -19,7 +19,7 @@ const categoryStyle = {
   "Sharing Bites": "shareable fries or wedges in basket, cafe snack, golden crispy",
   "Mouth-Melting Cheese Bites":
     "melted cheese appetizer, golden fried, restaurant sharing plate",
-  "Keffi Signatures": "signature restaurant dish, elegant plating, herb garnish",
+  "Teakuzz Signatures": "signature restaurant dish, elegant plating, herb garnish",
   "Pizza — Thin Crust": "thin crust pizza, melted cheese, basil, wood-fired look",
   Pasta: "Italian pasta on white plate, sauce, parmesan, restaurant garnish",
   Desserts: "plated dessert, chocolate or cheesecake, elegant restaurant sweet",
@@ -48,7 +48,7 @@ export const categories = [
   { name: "Rice", sort_order: 8 },
   { name: "Sharing Bites", sort_order: 9 },
   { name: "Mouth-Melting Cheese Bites", sort_order: 10 },
-  { name: "Keffi Signatures", sort_order: 11 },
+  { name: "Teakuzz Signatures", sort_order: 11 },
   { name: "Pizza — Thin Crust", sort_order: 12 },
   { name: "Pasta", sort_order: 13 },
   { name: "Desserts", sort_order: 14 },
@@ -129,9 +129,9 @@ export const items = [
   ["Mouth-Melting Cheese Bites", "Chipotle Chicken Taco", "", 245],
   ["Mouth-Melting Cheese Bites", "Tangy Cottage Cheese Taco", "", 245],
 
-  ["Keffi Signatures", "Falafel Platter", "", 295],
-  ["Keffi Signatures", "Nachos with Salsa and Sour Cream", "", 245],
-  ["Keffi Signatures", "Cheese Garlic Bread", "", 195],
+  ["Teakuzz Signatures", "Falafel Platter", "", 295],
+  ["Teakuzz Signatures", "Nachos with Salsa and Sour Cream", "", 245],
+  ["Teakuzz Signatures", "Cheese Garlic Bread", "", 195],
 
   ["Pizza — Thin Crust", "Margherita Pizza", "", 395],
   ["Pizza — Thin Crust", "Mutton Pepperoni Pizza", "", 445],

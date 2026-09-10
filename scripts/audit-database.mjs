@@ -1,5 +1,5 @@
 /**
- * Schema health check for Keffi (no row contents printed).
+ * Schema health check for Teakuzz (no row contents printed).
  * Usage: node scripts/audit-database.mjs
  */
 import { readFileSync } from "fs";

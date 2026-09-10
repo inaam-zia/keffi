@@ -14,7 +14,7 @@ const DEFAULT_ADDRESS = [
 export function getReceiptConfig(appName?: string): ReceiptConfig {
   const name =
     process.env.NEXT_PUBLIC_RECEIPT_CAFE_NAME ||
-    (appName ? appName.replace(/\s+cafe$/i, "").trim() : "KEFFI");
+    (appName ? appName.replace(/\s+cafe$/i, "").trim() : "TEAKUZZ");
 
   const addressEnv = process.env.NEXT_PUBLIC_CAFE_ADDRESS;
   const addressLines = addressEnv

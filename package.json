@@ -1,5 +1,5 @@
 {
-  "name": "keffi",
+  "name": "teakuzz",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed:menu": "node scripts/seed-keffi-menu.mjs",
+    "seed:menu": "node scripts/seed-teakuzz-menu.mjs",
     "db:setup": "node scripts/setup-database.mjs",
     "db:audit": "node scripts/audit-database.mjs",
     "generate:menu-images": "node scripts/generate-menu-images.mjs",

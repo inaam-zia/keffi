@@ -1,5 +1,5 @@
 /**
- * Apply supabase/setup-all.sql via Postgres, then seed the Keffi menu.
+ * Apply supabase/setup-all.sql via Postgres, then seed the Teakuzz menu.
  *
  * Requires in .env.local:
  *   NEXT_PUBLIC_SUPABASE_URL
@@ -78,8 +78,8 @@ try {
   await client.end().catch(() => {});
 }
 
-console.log("Seeding Keffi menu…");
-const seed = spawnSync(process.execPath, [join(root, "scripts/seed-keffi-menu.mjs")], {
+console.log("Seeding Teakuzz menu…");
+const seed = spawnSync(process.execPath, [join(root, "scripts/seed-teakuzz-menu.mjs")], {
   cwd: root,
   stdio: "inherit",
   env: process.env,

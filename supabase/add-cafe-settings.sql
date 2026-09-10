@@ -1,7 +1,7 @@
 -- Run in Supabase SQL Editor
 create table if not exists cafe_settings (
   id int primary key default 1 check (id = 1),
-  app_name text not null default 'Keffi',
+  app_name text not null default 'Teakuzz',
   logo_url text,
   tagline text default 'Crafted to Refresh',
   theme jsonb not null default '{}'::jsonb,
@@ -9,7 +9,7 @@ create table if not exists cafe_settings (
 );
 
 insert into cafe_settings (id, app_name, tagline)
-values (1, 'Keffi', 'Crafted to Refresh')
+values (1, 'Teakuzz', 'Crafted to Refresh')
 on conflict (id) do nothing;
 
 -- Public bucket for logo

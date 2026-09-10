@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Keffi — QR Table Ordering</title>
+  <style>
+    @page { size: A4; margin: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background: #e8ddd0;
+      font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .page {
+      width: 210mm;
+      height: 297mm;
+      margin: 0 auto 10px;
+      background: #faf6f1;
+      position: relative;
+      overflow: hidden;
+      page-break-after: always;
+      break-after: page;
+    }
+    .page:last-child { page-break-after: auto; break-after: auto; }
+    .footer {
+      position: absolute; left: 14mm; right: 14mm; bottom: 8mm;
+      display: flex; justify-content: space-between;
+      font-size: 7.5pt; letter-spacing: 0.1em; text-transform: uppercase; color: #b8834f;
+    }
+    .kicker {
+      font-size: 8pt; font-weight: 700; letter-spacing: 0.22em;
+      text-transform: uppercase; color: #c49a6c;
+    }
+    h1, h2 {
+      font-family: Georgia, "Iowan Old Style", Palatino, serif;
+      color: #5c3b2c; font-weight: 600;
+    }
+    h2 { font-size: 18pt; margin-bottom: 2mm; }
+    .pad { padding: 14mm 14mm 16mm; height: 100%; }
+
+    /* COVER */
+    .cover { background: #5c3b2c; color: #faf6f1; }
+    .cover-grid {
+      display: grid; grid-template-columns: 1.15fr 0.85fr;
+      gap: 10mm; height: 100%; align-items: stretch;
+    }
+    .cover h1 {
+      color: #fff; font-size: 32pt; line-height: 1.08;
+      margin: 8mm 0 5mm;
+    }
+    .cover p.lead { font-size: 12pt; line-height: 1.45; color: rgba(250,246,241,0.82); max-width: 95mm; }
+    .logo { height: 24mm; width: 24mm; object-fit: cover; border-radius: 50%; mix-blend-mode: screen; }
+    .qr-card {
+      background: #fff; border-radius: 5mm; padding: 7mm 6mm 6mm;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      align-self: center;
+    }
+    .qr-card img.qr { width: 68mm; height: 68mm; }
+    .qr-card h3 { color: #5c3b2c; font-size: 13pt; margin: 3mm 0 1mm; text-align: center; }
+    .qr-card p { color: #8a5639; font-size: 9pt; text-align: center; line-height: 1.35; }
+    .scan-pill {
+      margin-top: 3.5mm; background: #8a5639; color: #fff;
+      font-size: 8pt; font-weight: 800; letter-spacing: 0.16em;
+      text-transform: uppercase; padding: 2mm 4mm; border-radius: 10mm;
+    }
+    .cover-foot {
+      position: absolute; left: 14mm; right: 14mm; bottom: 10mm;
+      display: flex; justify-content: space-between; color: rgba(250,246,241,0.5);
+      font-size: 8pt; letter-spacing: 0.12em; text-transform: uppercase;
+    }
+
+    /* PHONES */
+    .phones { display: flex; gap: 4mm; align-items: flex-start; }
+    .phone {
+      width: 34.5mm; height: 71mm; background: #fff;
+      border: 2.2px solid #5c3b2c; border-radius: 5mm;
+      overflow: hidden; position: relative; flex-shrink: 0;
+    }
+    .phone.lg { width: 62mm; height: 128mm; border-radius: 6mm; border-width: 2.6px; }
+    .ph-bar { height: 4.2mm; background: #5c3b2c; }
+    .ph-head { padding: 2.2mm 2.4mm 1.6mm; border-bottom: 1px solid #f3ebe0; }
+    .ph-brand { font-size: 6.5pt; font-weight: 800; color: #5c3b2c; letter-spacing: 0.04em; }
+    .ph-sub { font-size: 5pt; color: #b8834f; margin-top: 0.4mm; }
+    .ph-search {
+      margin: 1.6mm 2.2mm 0; background: #f3ebe0; border-radius: 8mm;
+      height: 4.4mm; color: #c49a6c; font-size: 5pt; display: flex; align-items: center; padding: 0 2mm;
+    }
+    .dish { display: flex; gap: 1.6mm; padding: 1.8mm 2.2mm; border-bottom: 1px solid #f3ebe0; align-items: center; }
+    .thumb {
+      width: 7.2mm; height: 7.2mm; border-radius: 1.6mm; flex-shrink: 0;
+    }
+    .t1 { background: linear-gradient(135deg,#e8b56a,#c47a3a); }
+    .t2 { background: linear-gradient(135deg,#d97a5b,#8a5639); }
+    .t3 { background: linear-gradient(135deg,#7a9e6e,#4d6b3c); }
+    .t4 { background: linear-gradient(135deg,#e0c27a,#b8834f); }
+    .t5 { background: linear-gradient(135deg,#c9a07a,#714733); }
+    .dish-n { font-size: 5.4pt; font-weight: 700; color: #5c3b2c; line-height: 1.15; }
+    .dish-p { font-size: 5pt; color: #8a5639; margin-top: 0.3mm; }
+    .add {
+      margin-left: auto; font-size: 5pt; font-weight: 800; color: #fff; background: #8a5639;
+      border-radius: 1mm; padding: 0.7mm 1.4mm;
+    }
+    .cart {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      background: #5c3b2c; color: #fff; padding: 1.8mm 2.4mm;
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 5.5pt; font-weight: 700;
+    }
+    .offer {
+      margin: 1.8mm 2.2mm 0; background: #f3ebe0; border-radius: 2mm; padding: 1.6mm 2mm;
+    }
+    .offer b { display: block; font-size: 5.5pt; color: #5c3b2c; }
+    .offer span { font-size: 5pt; color: #8a5639; }
+
+    .status-row { display: flex; justify-content: space-between; padding: 3mm 2.5mm 2mm; }
+    .dot {
+      width: 5.2mm; height: 5.2mm; border-radius: 50%; background: #8a5639; color: #fff;
+      font-size: 5pt; font-weight: 800; display: flex; align-items: center; justify-content: center;
+    }
+    .dot.off { background: #e6d4bc; color: #b8834f; }
+    .st-lab { font-size: 4.4pt; color: #8a5639; text-align: center; margin-top: 0.8mm; width: 9mm; }
+    .bill { padding: 2mm 2.5mm; font-size: 5.2pt; color: #5c3b2c; }
+    .bill-line { display: flex; justify-content: space-between; margin-bottom: 1mm; }
+    .bill-total { border-top: 1px dashed #e6d4bc; margin-top: 1.5mm; padding-top: 1.5mm; font-weight: 800; }
+
+    .step-cap { margin-top: 2.5mm; text-align: center; width: 34.5mm; }
+    .step-cap b { display: block; font-size: 9pt; color: #5c3b2c; }
+    .step-cap span { display: block; font-size: 7.5pt; color: #8a5639; margin-top: 0.6mm; line-height: 1.3; }
+
+    .split { display: grid; grid-template-columns: 70mm 1fr; gap: 8mm; align-items: start; }
+    .callouts { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+    .call {
+      background: #fff; border: 1px solid #e6d4bc; border-radius: 3mm; padding: 4mm;
+    }
+    .call .ic {
+      width: 8mm; height: 8mm; border-radius: 2mm; background: #f3ebe0;
+      display: flex; align-items: center; justify-content: center; margin-bottom: 2mm;
+      font-size: 11pt;
+    }
+    .call h3 { font-size: 10pt; color: #5c3b2c; margin-bottom: 1mm; }
+    .call p { font-size: 8.4pt; color: #8a5639; line-height: 1.35; }
+
+    /* ADMIN */
+    .ticket {
+      background: #fff; border: 1px solid #e6d4bc; border-radius: 3mm; padding: 3.5mm 4mm;
+    }
+    .badge {
+      display: inline-block; font-size: 7pt; font-weight: 800; letter-spacing: 0.08em;
+      text-transform: uppercase; padding: 0.6mm 2mm; border-radius: 1mm;
+    }
+    .b-new { background: #fde7c7; color: #8a5639; }
+    .b-prep { background: #dbeafe; color: #1e40af; }
+    .b-ok { background: #dcfce7; color: #166534; }
+    .ticket h3 { font-size: 11pt; color: #5c3b2c; }
+    .ticket ul { list-style: none; margin-top: 1.5mm; font-size: 8.5pt; color: #8a5639; }
+    .dash {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4mm;
+    }
+    .metric {
+      background: #5c3b2c; color: #fff; border-radius: 3mm; padding: 4.5mm 4mm;
+    }
+    .metric b { display: block; font-family: Georgia, Palatino, serif; font-size: 16pt; }
+    .metric span { font-size: 8pt; color: #e6d4bc; }
+    .bar-row { margin-top: 2mm; }
+    .bar-lab { display: flex; justify-content: space-between; font-size: 8pt; color: #5c3b2c; margin-bottom: 0.8mm; }
+    .bar { height: 3.2mm; background: #f3ebe0; border-radius: 2mm; overflow: hidden; }
+    .bar i { display: block; height: 100%; background: #8a5639; }
+
+    .warn {
+      background: #fff7ed; border: 1px solid #f6d7a8; border-radius: 3mm;
+      padding: 3mm 4mm; font-size: 8.5pt; color: #7c4a12;
+    }
+    .paid {
+      background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 3mm;
+      padding: 3mm 4mm; display: flex; justify-content: space-between; align-items: center;
+    }
+    .btn {
+      background: #8a5639; color: #fff; font-size: 8pt; font-weight: 700;
+      padding: 1.6mm 3mm; border-radius: 1.6mm;
+    }
+
+    .icon-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4mm; }
+    .ig {
+      background: #fff; border: 1px solid #e6d4bc; border-radius: 3mm;
+      padding: 4mm 3.5mm; text-align: center;
+    }
+    .ig .big { font-size: 16pt; margin-bottom: 1.5mm; }
+    .ig h3 { font-size: 9.5pt; color: #5c3b2c; margin-bottom: 1mm; }
+    .ig p { font-size: 7.8pt; color: #8a5639; line-height: 1.3; }
+
+    .pills { display: flex; flex-wrap: wrap; gap: 1.8mm; }
+    .pill {
+      background: #fff; border: 1px solid #e6d4bc; color: #5c3b2c;
+      font-size: 8pt; font-weight: 600; padding: 1.4mm 2.8mm; border-radius: 8mm;
+    }
+    .need {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 3.5mm;
+    }
+    .need-i {
+      display: flex; gap: 3mm; align-items: center;
+      background: #fff; border: 1px solid #e6d4bc; border-radius: 3mm; padding: 3.5mm;
+    }
+    .num {
+      width: 8mm; height: 8mm; border-radius: 50%; background: #c49a6c; color: #5c3b2c;
+      font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- 1 COVER -->
+<section class="page cover">
+  <div class="pad">
+    <div class="cover-grid">
+      <div>
+        <img class="logo" src="assets/keffi-logo.png" alt="Keffi" />
+        <p class="kicker" style="margin-top: 8mm;">Restaurant owner briefing</p>
+        <h1>Guests order<br>from the table.<br>You run the rest.</h1>
+        <p class="lead">
+          Scan the live QR on the right. That is Table L1 — the same flow your guests would use. No app to install.
+        </p>
+      </div>
+      <div class="qr-card">
+        <p class="kicker" style="color:#8a5639;">Try it now</p>
+        <img class="qr" src="assets/table-1-qr.png" alt="Scan to open Table 1" />
+        <div class="scan-pill">Scan · Table L1</div>
+        <h3>Open the live menu</h3>
+        <p>Point your phone camera at this code. The kitchen screen updates the moment an order is sent.</p>
+      </div>
+    </div>
+  </div>
+  <div class="cover-foot">
+    <span>Keffi · QR ordering</span>
+    <span>Prepared by Inaam Zia</span>
+  </div>
+</section>
+
+<!-- 2 JOURNEY -->
+<section class="page">
+  <div class="pad">
+    <p class="kicker">Guest visit</p>
+    <h2>Five screens. One sitting.</h2>
+    <p style="color:#8a5639; font-size:10pt; margin-bottom: 7mm;">They never wait for a menu, a waiter, or a paper bill.</p>
+    <div class="phones">
+      <div>
+        <div class="phone">
+          <div class="ph-bar"></div>
+          <div class="ph-head"><div class="ph-brand">keffi</div><div class="ph-sub">L1 · Table 1</div></div>
+          <div style="padding: 8mm 2mm; text-align:center;">
+            <div style="width:14mm;height:14mm;margin:0 auto 3mm;border:2px dashed #c49a6c;border-radius:2mm;"></div>
+            <div class="ph-brand">Scan table QR</div>
+            <div class="ph-sub" style="margin-top:1.5mm;line-height:1.3;">Camera opens the menu for this table only</div>
+          </div>
+        </div>
+        <div class="step-cap"><b>1 · Scan</b><span>Sticker on the table</span></div>
+      </div>
+      <div>
+        <div class="phone">
+          <div class="ph-bar"></div>
+          <div class="ph-head"><div class="ph-brand">keffi</div><div class="ph-sub">L1 · Table 1</div></div>
+          <div class="ph-search">Search dishes…</div>
+          <div class="offer"><b>Keffi Signatures</b><span>Falafel platter · ₹295</span></div>
+          <div class="dish"><div class="thumb t1"></div><div><div class="dish-n">Cheese Balls</div><div class="dish-p">₹195</div></div><span class="add">ADD</span></div>
+          <div class="dish"><div class="thumb t2"></div><div><div class="dish-n">Cheese Fries</div><div class="dish-p">₹179</div></div><span class="add">ADD</span></div>
+          <div class="dish"><div class="thumb t3"></div><div><div class="dish-n">Farmhouse Pizza</div><div class="dish-p">₹395</div></div><span class="add">ADD</span></div>
+        </div>
+        <div class="step-cap"><b>2 · Browse</b><span>Photos, search, combos</span></div>
+      </div>
+      <div>
+        <div class="phone">
+          <div class="ph-bar"></div>
+          <div class="ph-head"><div class="ph-brand">Your cart</div><div class="ph-sub">2 items</div></div>
+          <div class="dish"><div class="thumb t1"></div><div><div class="dish-n">Cheese Balls</div><div class="dish-p">× 1</div></div><div class="dish-p">₹195</div></div>
+          <div class="dish"><div class="thumb t2"></div><div><div class="dish-n">Cheese Fries</div><div class="dish-p">× 1</div></div><div class="dish-p">₹179</div></div>
+          <div style="margin: 3mm 2.2mm; background:#f3ebe0; border-radius: 8mm; height: 8mm; display:flex; align-items:center; justify-content:center; font-size:6pt; font-weight:800; color:#5c3b2c;">Slide to place order →</div>
+          <div class="cart"><span>2 items</span><span>₹374</span></div>
+        </div>
+        <div class="step-cap"><b>3 · Order</b><span>Name, phone, slide</span></div>
+      </div>
+      <div>
+        <div class="phone">
+          <div class="ph-bar"></div>
+          <div class="ph-head"><div class="ph-brand">Order status</div><div class="ph-sub">Kitchen has it</div></div>
+          <div class="status-row">
+            <div><div class="dot">1</div><div class="st-lab">Received</div></div>
+            <div><div class="dot">2</div><div class="st-lab">Preparing</div></div>
+            <div><div class="dot off">3</div><div class="st-lab">Served</div></div>
+          </div>
+          <div class="dish"><div class="thumb t1"></div><div><div class="dish-n">Cheese Balls</div><div class="dish-p">Preparing</div></div></div>
+          <div class="dish"><div class="thumb t2"></div><div><div class="dish-n">Cheese Fries</div><div class="dish-p">Preparing</div></div></div>
+          <div style="margin:3mm 2.2mm; text-align:center; font-size:6pt; font-weight:700; color:#8a5639;">+ Add more</div>
+        </div>
+        <div class="step-cap"><b>4 · Track</b><span>Live on their phone</span></div>
+      </div>
+      <div>
+        <div class="phone">
+          <div class="ph-bar"></div>
+          <div class="ph-head"><div class="ph-brand">BILL</div><div class="ph-sub">GSTIN on request</div></div>
+          <div class="bill">
+            <div class="bill-line"><span>Cheese Balls</span><span>195</span></div>
+            <div class="bill-line"><span>Cheese Fries</span><span>179</span></div>
+            <div class="bill-line"><span>CGST 2.5%</span><span>9.35</span></div>
+            <div class="bill-line"><span>SGST 2.5%</span><span>9.35</span></div>
+            <div class="bill-line bill-total"><span>Total</span><span>₹392.70</span></div>
+          </div>
+          <div style="margin:2mm auto; width:16mm; height:16mm; border:2px solid #5c3b2c; border-radius:1mm;"></div>
+          <div style="text-align:center; font-size:5.5pt; font-weight:800; color:#8a5639;">Pay UPI · exact amount</div>
+        </div>
+        <div class="step-cap"><b>5 · Pay</b><span>One bill, then rate</span></div>
+      </div>
+    </div>
+    <div style="margin-top: 10mm; background:#5c3b2c; color:#faf6f1; border-radius:3mm; padding:5mm 6mm;">
+      <p style="font-size:11pt; line-height:1.4;">When they leave, staff tap <strong>Mark paid &amp; clear</strong>. The next party must scan again — the old phone cannot keep ordering.</p>
+    </div>
+  </div>
+  <div class="footer"><span>Keffi · Owner pitch</span><span>02</span></div>
+</section>
+
+<!-- 3 CUSTOMER -->
+<section class="page">
+  <div class="pad">
+    <p class="kicker">Customer side</p>
+    <h2>The phone is the menu, waiter, and bill.</h2>
+    <div class="split" style="margin-top: 6mm;">
+      <div class="phone lg">
+        <div class="ph-bar"></div>
+        <div class="ph-head">
+          <div class="ph-brand">keffi</div>
+          <div class="ph-sub">Food and Beverages · L1</div>
+        </div>
+        <div class="ph-search">Search dishes, offers…</div>
+        <div class="offer"><b>Offers &amp; combos</b><span>Bundle a full deal in one tap</span></div>
+        <div class="dish"><div class="thumb t4"></div><div><div class="dish-n">Cheese Garlic Bread</div><div class="dish-p">Keffi Signatures · ₹195</div></div><span class="add">ADD</span></div>
+        <div class="dish"><div class="thumb t3"></div><div><div class="dish-n">Falafel Platter</div><div class="dish-p">Keffi Signatures · ₹295</div></div><span class="add">ADD</span></div>
+        <div class="dish"><div class="thumb t1"></div><div><div class="dish-n">Mozzarella Sticks</div><div class="dish-p">Cheese bites · ₹195</div></div><span class="add">ADD</span></div>
+        <div class="dish"><div class="thumb t5"></div><div><div class="dish-n">Chicken Club Sandwich</div><div class="dish-p">Sandwiches · ₹395</div></div><span class="add">ADD</span></div>
+        <div class="dish"><div class="thumb t2"></div><div><div class="dish-n">Peri Peri Fries</div><div class="dish-p">Sharing bites · ₹159</div></div><span class="add">ADD</span></div>
+        <div class="dish"><div class="thumb t4"></div><div><div class="dish-n">Margherita Pizza</div><div class="dish-p">Thin crust · ₹395</div></div><span class="add">ADD</span></div>
+        <div class="cart"><span>View cart · 3 items</span><span>₹649</span></div>
+      </div>
+      <div class="callouts">
+        <div class="call"><div class="ic">⌕</div><h3>Search &amp; categories</h3><p>Jump to Pizza, Wok, Desserts. Hide a dish the second you run out — it vanishes on every phone.</p></div>
+        <div class="call"><div class="ic">★</div><h3>Popular &amp; top rated</h3><p>A strip of guest favourites sits above the menu so first-timers order faster.</p></div>
+        <div class="call"><div class="ic">▣</div><h3>Combos in one tap</h3><p>You switch a bundle on tonight. They add the whole deal without picking each item.</p></div>
+        <div class="call"><div class="ic">☰</div><h3>Cart that stays</h3><p>If they check WhatsApp mid-order, the cart is still there when they come back.</p></div>
+        <div class="call"><div class="ic">➜</div><h3>Slide to send</h3><p>Name and 10-digit phone once. After that, a second round is one slide — not another form.</p></div>
+        <div class="call"><div class="ic">◎</div><h3>Your look</h3><p>Logo, colours, fonts, tagline. The menu looks like this restaurant, not a generic food app.</p></div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span>Keffi · Owner pitch</span><span>03</span></div>
+</section>
+
+<!-- 4 AFTER + PAY -->
+<section class="page">
+  <div class="pad">
+    <p class="kicker">After they order</p>
+    <h2>They watch the kitchen. You take the money.</h2>
+    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 5mm; margin-top: 7mm;">
+      <div>
+        <div class="phone" style="width:100%; height: 95mm;">
+          <div class="ph-bar"></div>
+          <div class="ph-head"><div class="ph-brand">Live status</div><div class="ph-sub">Updates by itself</div></div>
+          <div class="status-row">
+            <div><div class="dot">1</div><div class="st-lab">Received</div></div>
+            <div><div class="dot">2</div><div class="st-lab">Preparing</div></div>
+            <div><div class="dot off">3</div><div class="st-lab">Served</div></div>
+          </div>
+          <div class="dish"><div class="thumb t1"></div><div><div class="dish-n">Cheese Balls ×2</div><div class="dish-p">On the pass</div></div></div>
+          <div class="dish"><div class="thumb t3"></div><div><div class="dish-n">Falafel Platter</div><div class="dish-p">On the pass</div></div></div>
+          <div style="margin:4mm 2.5mm; padding:2mm; background:#f3ebe0; border-radius:2mm; font-size:6pt; color:#8a5639; text-align:center;">Want extra chai? Tap Add more — same table, same bill.</div>
+        </div>
+        <p style="margin-top:3mm; font-size:9.5pt; font-weight:700; color:#5c3b2c;">No waving at staff</p>
+        <p style="font-size:8.5pt; color:#8a5639; margin-top:1mm;">Received → Preparing → Served. Cancelled if you void it.</p>
+      </div>
+      <div>
+        <div class="phone" style="width:100%; height: 95mm;">
+          <div class="ph-bar"></div>
+          <div class="ph-head"><div class="ph-brand">One bill</div><div class="ph-sub">All rounds merged</div></div>
+          <div class="bill">
+            <div class="bill-line"><span>Name: Guest</span><span>L1</span></div>
+            <div class="bill-line" style="margin-top:2mm;"><span>Cheese Balls ×2</span><span>390.00</span></div>
+            <div class="bill-line"><span>Falafel Platter</span><span>295.00</span></div>
+            <div class="bill-line"><span>Peri Peri Fries</span><span>159.00</span></div>
+            <div class="bill-line" style="margin-top:2mm;"><span>Subtotal</span><span>844.00</span></div>
+            <div class="bill-line"><span>CGST 2.5%</span><span>21.10</span></div>
+            <div class="bill-line"><span>SGST 2.5%</span><span>21.10</span></div>
+            <div class="bill-line bill-total"><span>Grand total</span><span>₹886.20</span></div>
+          </div>
+        </div>
+        <p style="margin-top:3mm; font-size:9.5pt; font-weight:700; color:#5c3b2c;">GST when you need it</p>
+        <p style="font-size:8.5pt; color:#8a5639; margin-top:1mm;">GSTIN, CGST, SGST on the bill — or off if you are not registered.</p>
+      </div>
+      <div>
+        <div class="phone" style="width:100%; height: 95mm;">
+          <div class="ph-bar"></div>
+          <div class="ph-head"><div class="ph-brand">Pay · UPI</div><div class="ph-sub">Exact amount</div></div>
+          <div style="padding: 4mm 3mm; text-align:center;">
+            <div style="width:28mm;height:28mm;margin:2mm auto; border:2px solid #5c3b2c; background:
+              repeating-linear-gradient(0deg,#5c3b2c 0 2px,transparent 2px 4px),
+              repeating-linear-gradient(90deg,#5c3b2c 0 2px,transparent 2px 4px); background-size: 4px 4px;"></div>
+            <p style="font-size:8pt; font-weight:800; color:#5c3b2c; margin-top:2mm;">₹886.20</p>
+            <p style="font-size:6pt; color:#8a5639; margin-top:1mm;">UPI ID + payee name</p>
+            <div style="margin-top:3mm; background:#8a5639; color:#fff; border-radius:2mm; padding:2mm; font-size:6.5pt; font-weight:800;">Open UPI app</div>
+            <p style="font-size:6pt; color:#b8834f; margin-top:3mm;">★★★★★ rate this dish</p>
+          </div>
+        </div>
+        <p style="margin-top:3mm; font-size:9.5pt; font-weight:700; color:#5c3b2c;">Pay, then rate</p>
+        <p style="font-size:8.5pt; color:#8a5639; margin-top:1mm;">Stars and comments feed “Top rated” and your Insights page.</p>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span>Keffi · Owner pitch</span><span>04</span></div>
+</section>
+
+<!-- 5 ADMIN -->
+<section class="page">
+  <div class="pad">
+    <p class="kicker">Admin side · any browser</p>
+    <h2>The counter laptop is the kitchen ticket.</h2>
+    <div class="dash" style="margin: 5mm 0 5mm;">
+      <div class="metric"><b>₹24,180</b><span>Sales · example day</span></div>
+      <div class="metric"><b>42</b><span>Orders · avg ticket ₹576</span></div>
+      <div class="metric"><b>3</b><span>Tables still eating</span></div>
+    </div>
+    <div style="display:grid; grid-template-columns: 1.2fr 0.8fr; gap: 5mm;">
+      <div>
+        <div class="ticket" style="margin-bottom: 3.5mm;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>L1 · Priya</h3><span class="badge b-new">New</span>
+          </div>
+          <ul>
+            <li>2× Cheese Balls</li>
+            <li>1× Falafel Platter</li>
+          </ul>
+          <p style="margin-top:2mm; font-size:8pt; color:#b8834f;">Just now · ₹886 · Preparing → Served</p>
+        </div>
+        <div class="ticket" style="margin-bottom: 3.5mm;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>Window · Arjun</h3><span class="badge b-prep">Preparing</span>
+          </div>
+          <ul>
+            <li>1× Chicken Tikka Pizza</li>
+            <li>1× Peri Peri Fries</li>
+          </ul>
+        </div>
+        <div class="paid">
+          <div>
+            <p style="font-size:8pt; font-weight:800; color:#166534; text-transform:uppercase; letter-spacing:0.08em;">Served — mark paid</p>
+            <p style="font-size:10pt; color:#5c3b2c; font-weight:700;">Bar 2 · ₹640</p>
+          </div>
+          <span class="btn">Clear table</span>
+        </div>
+      </div>
+      <div>
+        <div class="ticket" style="margin-bottom: 3.5mm;">
+          <h3 style="margin-bottom: 3mm;">What is selling</h3>
+          <div class="bar-row"><div class="bar-lab"><span>Cheese Balls</span><span>38</span></div><div class="bar"><i style="width:92%"></i></div></div>
+          <div class="bar-row"><div class="bar-lab"><span>Falafel Platter</span><span>22</span></div><div class="bar"><i style="width:64%"></i></div></div>
+          <div class="bar-row"><div class="bar-lab"><span>Margherita</span><span>11</span></div><div class="bar"><i style="width:34%"></i></div></div>
+          <div class="bar-row"><div class="bar-lab"><span>Cheesecake</span><span>4</span></div><div class="bar"><i style="width:14%"></i></div></div>
+        </div>
+        <div class="warn">Inventory · buy milk, tea leaves, burger buns — 3 items below the line.</div>
+      </div>
+    </div>
+    <div class="icon-grid" style="margin-top: 6mm;">
+      <div class="ig"><div class="big">☰</div><h3>Menu &amp; photos</h3><p>Change price now. No reprint of a laminated card.</p></div>
+      <div class="ig"><div class="big">▦</div><h3>Recipes → stock</h3><p>Two chais ordered, milk drops by itself.</p></div>
+      <div class="ig"><div class="big">▣</div><h3>Print table QRs</h3><p>Name them Patio, Window. Replace a leaked sticker.</p></div>
+      <div class="ig"><div class="big">₹</div><h3>UPI QR locked</h3><p>Second password so staff cannot reroute money.</p></div>
+      <div class="ig"><div class="big">↗</div><h3>Insights</h3><p>Busy hour, repeat guests, dishes that never move.</p></div>
+      <div class="ig"><div class="big">↓</div><h3>Excel &amp; bills</h3><p>History, thermal print, GST-ready export.</p></div>
+    </div>
+  </div>
+  <div class="footer"><span>Keffi · Owner pitch</span><span>05</span></div>
+</section>
+
+<!-- 6 CLOSE -->
+<section class="page">
+  <div class="pad">
+    <div style="display:grid; grid-template-columns: 1fr 72mm; gap: 8mm;">
+      <div>
+        <p class="kicker">Go live</p>
+        <h2>We set it up. Staff learn it in one shift.</h2>
+        <div class="need" style="margin-top: 6mm;">
+          <div class="need-i"><div class="num">1</div><div><h3 style="font-size:10pt;color:#5c3b2c;">Your brand</h3><p style="font-size:8.5pt;color:#8a5639;">Logo, colours, UPI, GSTIN</p></div></div>
+          <div class="need-i"><div class="num">2</div><div><h3 style="font-size:10pt;color:#5c3b2c;">Your menu</h3><p style="font-size:8.5pt;color:#8a5639;">Prices, photos, combos</p></div></div>
+          <div class="need-i"><div class="num">3</div><div><h3 style="font-size:10pt;color:#5c3b2c;">Table stickers</h3><p style="font-size:8.5pt;color:#8a5639;">One QR per table, named your way</p></div></div>
+          <div class="need-i"><div class="num">4</div><div><h3 style="font-size:10pt;color:#5c3b2c;">15-minute walkthrough</h3><p style="font-size:8.5pt;color:#8a5639;">New → Preparing → Served → Clear</p></div></div>
+        </div>
+        <p style="margin-top: 7mm; font-size:9pt; font-weight:700; color:#5c3b2c;">On the guest phone</p>
+        <div class="pills" style="margin-top: 2.5mm;">
+          <span class="pill">Scan</span><span class="pill">Photo menu</span><span class="pill">Search</span>
+          <span class="pill">Combos</span><span class="pill">Slide to order</span><span class="pill">Live status</span>
+          <span class="pill">Add more</span><span class="pill">Combined bill</span><span class="pill">UPI</span>
+          <span class="pill">GST</span><span class="pill">Ratings</span>
+        </div>
+        <p style="margin-top: 5mm; font-size:9pt; font-weight:700; color:#5c3b2c;">On your admin</p>
+        <div class="pills" style="margin-top: 2.5mm;">
+          <span class="pill">Kitchen queue</span><span class="pill">Sound alert</span><span class="pill">Clear table</span>
+          <span class="pill">Dashboard</span><span class="pill">Inventory</span><span class="pill">Recipes</span>
+          <span class="pill">Insights</span><span class="pill">Customers</span><span class="pill">Excel</span>
+          <span class="pill">Branding</span>
+        </div>
+        <p style="margin-top: 10mm; font-family: Georgia, Palatino, serif; font-size: 16pt; color:#5c3b2c;">Scan the cover. Then we talk.</p>
+        <p style="margin-top: 2mm; font-size: 10pt; color:#8a5639;">Inaam Zia · Keffi</p>
+      </div>
+      <div class="qr-card" style="align-self:start; padding: 6mm;">
+        <p class="kicker" style="color:#8a5639;">Table L1 · live</p>
+        <img class="qr" src="assets/table-1-qr.png" alt="Scan Table 1" style="width:58mm;height:58mm;" />
+        <div class="scan-pill">Scan to order</div>
+        <p style="margin-top:3mm;">Same code as the cover. Keep this page at the table while you demo.</p>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span>Keffi · Owner pitch</span><span>06</span></div>
+</section>
+
+</body>
+</html>
