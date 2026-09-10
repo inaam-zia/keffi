@@ -25,6 +25,7 @@ import { useCustomerLocale } from "@/components/customer-locale-provider";
 import CustomerNav from "@/components/customer-nav";
 import TableAssistButtons from "@/components/table-assist-buttons";
 import DietToggle, {
+  isNonVegMenuItem,
   matchesDietFilter,
   readDietFilter,
   type DietFilter,
@@ -384,13 +385,13 @@ function MenuItemRow({
           </p>
         ) : null}
         <div className="mt-1 flex flex-wrap gap-1">
-          {item.is_veg !== false ? (
-            <span className="rounded-full bg-green-50 px-1.5 py-0.5 text-[10px] font-semibold text-green-800">
-              {copy.veg}
-            </span>
-          ) : (
+          {isNonVegMenuItem(item) ? (
             <span className="rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold text-red-800">
               {copy.nonVeg}
+            </span>
+          ) : (
+            <span className="rounded-full bg-green-50 px-1.5 py-0.5 text-[10px] font-semibold text-green-800">
+              {copy.veg}
             </span>
           )}
           {item.is_jain ? (

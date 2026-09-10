@@ -1,19 +1,12 @@
 "use client";
 
 import { useCustomerLocale } from "@/components/customer-locale-provider";
+import type { DietFilter } from "@/lib/diet";
 
-export type DietFilter = "veg" | "nonveg" | "both";
+export type { DietFilter };
+export { matchesDietFilter, isNonVegMenuItem } from "@/lib/diet";
 
 export const DIET_FILTER_KEY = "cafe-diet-filter";
-
-export function matchesDietFilter(
-  item: { is_veg?: boolean | null },
-  filter: DietFilter
-): boolean {
-  if (filter === "veg") return item.is_veg !== false;
-  if (filter === "nonveg") return item.is_veg === false;
-  return true;
-}
 
 export function readDietFilter(): DietFilter {
   try {
