@@ -1,5 +1,6 @@
 import { getBranding } from "@/lib/branding";
 import AdminLoginForm from "./login-form";
+import CafeLogo from "@/components/cafe-logo";
 
 export default async function AdminLoginPage() {
   const branding = await getBranding();
@@ -9,19 +10,12 @@ export default async function AdminLoginPage() {
     <main className="order-bg relative flex min-h-screen min-h-dvh flex-col items-center px-4 py-10">
       <div className="flex w-full max-w-sm flex-1 flex-col justify-center">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="h-24 w-24 overflow-hidden rounded-3xl border border-brand bg-brand-surface shadow-md">
-            {branding.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={branding.logoUrl}
-                alt={branding.appName}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <span className="flex h-full w-full items-center justify-center text-3xl font-bold text-brand-heading">
-                {branding.appName.charAt(0)}
-              </span>
-            )}
+          <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-3xl border border-brand bg-brand-surface shadow-md">
+            <CafeLogo
+              branding={branding}
+              size="lg"
+              className="h-full w-full max-w-none object-contain p-2"
+            />
           </div>
           <h1 className="mt-5 text-2xl font-bold tracking-tight text-brand-heading">
             {branding.appName}

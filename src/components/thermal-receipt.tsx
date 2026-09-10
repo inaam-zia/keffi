@@ -1,4 +1,5 @@
 import type { CafeBranding } from "@/lib/branding-types";
+import CafeLogo from "@/components/cafe-logo";
 import { getReceiptConfig } from "@/lib/receipt-config";
 import {
   calculateBillTotals,
@@ -49,12 +50,7 @@ export default function ThermalReceipt({
     <article className="thermal-receipt" aria-label="Bill receipt">
       <header className="thermal-receipt__header">
         {branding.logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={branding.logoUrl}
-            alt=""
-            className="thermal-receipt__logo"
-          />
+          <CafeLogo branding={branding} size="md" className="thermal-receipt__logo" />
         ) : null}
         <h2 className="thermal-receipt__brand">{receipt.cafeName}</h2>
         {receipt.addressLines.map((line) => (

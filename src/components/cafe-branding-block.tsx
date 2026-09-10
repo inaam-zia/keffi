@@ -23,7 +23,7 @@ export default function CafeBrandingBlock({
 
   return (
     <div className={`flex gap-3 ${alignClass} ${className}`}>
-      {branding.logoUrl && <CafeLogo branding={branding} size={logoSize} className="shrink-0" />}
+      <CafeLogo branding={branding} size={logoSize} className="shrink-0" />
       <div className="min-w-0">
         <p
           className="font-bold leading-tight text-brand-heading"

@@ -75,7 +75,7 @@ function rowToBranding(row: SettingsRow, defaults: CafeBranding): CafeBranding {
   const { cgstPercent, sgstPercent } = resolveTaxPercents(row, gstEnabled);
   return {
     appName: row.app_name?.trim() || defaults.appName,
-    logoUrl: row.logo_url || null,
+    logoUrl: row.logo_url?.trim() || defaults.logoUrl,
     tagline: row.tagline?.trim() || defaults.tagline,
     theme: mergeTheme(row.theme),
     // Tax lines depend on enable + rates; GSTIN is optional display
