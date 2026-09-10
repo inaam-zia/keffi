@@ -12,11 +12,15 @@ import TableHeading from "@/components/table-heading";
 import OrderStatusView from "./order-status-view";
 import { formatOfferIncludes } from "@/lib/offers";
 import {
+  customerInputLang,
   displayItemDescription,
   displayItemName,
+  displayMenuText,
+  displaySpiceLabel,
   type CustomerCopy,
   type CustomerLocale,
 } from "@/lib/customer-copy";
+import { toHindiMenuText } from "@/lib/hindi-menu";
 import { useCustomerLocale } from "@/components/customer-locale-provider";
 import CustomerNav from "@/components/customer-nav";
 import { couponDiscount } from "@/lib/coupons";
@@ -295,8 +299,9 @@ function OfferCard({
   onAdd: () => void;
   onUpdateQty: (delta: number) => void;
 }) {
-  const { copy } = useCustomerLocale();
-  const includes = formatOfferIncludes(offer);
+  const { copy, locale } = useCustomerLocale();
+  const includes = displayMenuText(formatOfferIncludes(offer), locale);
+  const name = displayMenuText(offer.name, locale);
 
   return (
     <div
@@ -308,7 +313,7 @@ function OfferCard({
         <div className="menu-suggestion-placeholder text-lg font-bold text-cafe-500">%</div>
       )}
       <p className="line-clamp-2 text-sm font-semibold leading-tight text-cafe-900">
-        {offer.name}
+        {name}
       </p>
       <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-cafe-500">{includes}</p>
       {isBlocked && (
@@ -319,7 +324,7 @@ function OfferCard({
       <div className="mt-2 flex items-center justify-between gap-1">
         <span className="text-xs font-bold text-cafe-700">{formatPrice(offer.price)}</span>
         <AddQtyControl
-          name={offer.name}
+          name={name}
           quantity={quantity}
           onAdd={onAdd}
           onUpdateQty={onUpdateQty}
@@ -494,6 +499,7 @@ function MenuCategorySection({
   onUpdateQty: (menuItemId: string, delta: number) => void;
   onOpenDetail: (item: MenuItem) => void;
 }) {
+  const { copy } = useCustomerLocale();
   const sectionCartCount = items.reduce(
     (sum, item) => sum + (cartQtyById.get(item.id) ?? 0),
     0
@@ -502,9 +508,9 @@ function MenuCategorySection({
   return (
     <section id={`menu-cat-${sectionKey}`} data-category-key={sectionKey} className="scroll-mt-48">
       <div className="mb-3 flex items-center gap-2">
-        <h2 className="order-category">{title}</h2>
+        <h2 className="order-category">{displayMenuText(title, locale)}</h2>
         <span className="text-[10px] font-semibold text-cafe-500">
-          {items.length} item{items.length === 1 ? "" : "s"}
+          {items.length} {items.length === 1 ? copy.items : copy.itemsPlural}
         </span>
         {sectionCartCount > 0 ? (
           <span className="rounded-full bg-[var(--brand-primary)] px-2 py-0.5 text-[10px] font-bold text-[var(--brand-button-text)]">
@@ -591,7 +597,7 @@ function ItemDetailSheet({
             <p className="mt-4 text-sm leading-relaxed text-cafe-600">{description}</p>
           ) : null}
           {item.allergens ? (
-            <p className="mt-2 text-xs text-amber-800">{copy.allergens}: {item.allergens}</p>
+            <p className="mt-2 text-xs text-amber-800">{copy.allergens}: {displayMenuText(item.allergens, locale)}</p>
           ) : null}
 
           {isPreparing ? (
@@ -607,6 +613,9 @@ function ItemDetailSheet({
             placeholder={copy.notesPlaceholder}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
+            lang={customerInputLang(locale)}
+            autoCapitalize="off"
+            autoCorrect="off"
           />
           <p className="order-label mt-3">{copy.spice}</p>
           <div className="mt-1 flex flex-wrap gap-2">
@@ -909,8 +918,18 @@ export default function OrderClient({
       if (dietFilter === "veg" && item.is_veg === false) continue;
       if (dietFilter === "jain" && item.is_jain !== true) continue;
       const categoryName = categoryNameById.get(item.category_id || "") || "";
-      const haystack =
-        `${item.name} ${item.name_hi || ""} ${item.description || ""} ${item.description_hi || ""} ${categoryName}`.toLowerCase();
+      const haystack = [
+        item.name,
+        item.name_hi || "",
+        toHindiMenuText(item.name),
+        item.description || "",
+        item.description_hi || "",
+        item.description ? toHindiMenuText(item.description) : "",
+        categoryName,
+        categoryName ? toHindiMenuText(categoryName) : "",
+      ]
+        .join(" ")
+        .toLowerCase();
       if (!haystack.includes(normalizedSearch)) continue;
 
       const key = item.category_id || "other";
@@ -938,7 +957,8 @@ export default function OrderClient({
     if (!normalizedSearch) return offers;
     return offers.filter((offer) => {
       const includes = formatOfferIncludes(offer);
-      const haystack = `${offer.name} ${includes}`.toLowerCase();
+      const haystack =
+        `${offer.name} ${toHindiMenuText(offer.name)} ${includes} ${toHindiMenuText(includes)}`.toLowerCase();
       return haystack.includes(normalizedSearch);
     });
   }, [offers, normalizedSearch]);
@@ -1436,6 +1456,13 @@ export default function OrderClient({
               placeholder={copy.searchPlaceholder}
               className="menu-search-input"
               aria-label={copy.searchAria}
+              lang={customerInputLang(locale)}
+              autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              inputMode="search"
+              enterKeyHint="search"
             />
             {searchQuery ? (
               <button
@@ -1470,7 +1497,7 @@ export default function OrderClient({
                     onClick={() => scrollToCategory(section.key)}
                     className={`category-chip ${active ? "category-chip--active" : ""}`}
                   >
-                    {section.title}
+                    {displayMenuText(section.title, locale)}
                   </button>
                 );
               })}
@@ -1652,13 +1679,17 @@ export default function OrderClient({
                 {cart.map((item) => (
                   <div key={item.lineId} className="cart-line">
                     <div className="cart-line__info">
-                      <p className="cart-line__name">{item.name}</p>
+                      <p className="cart-line__name">{displayMenuText(item.name, locale)}</p>
                       {item.includes ? (
-                        <p className="mt-0.5 text-xs leading-snug text-cafe-500">{item.includes}</p>
+                        <p className="mt-0.5 text-xs leading-snug text-cafe-500">
+                          {displayMenuText(item.includes, locale)}
+                        </p>
                       ) : null}
                       {item.notes || item.spiceLevel ? (
                         <p className="mt-0.5 text-xs text-amber-800">
-                          {[item.spiceLevel, item.notes].filter(Boolean).join(" · ")}
+                          {[displaySpiceLabel(item.spiceLevel, copy), item.notes]
+                            .filter(Boolean)
+                            .join(" · ")}
                         </p>
                       ) : null}
                       <p className="mt-1 text-sm text-cafe-500">

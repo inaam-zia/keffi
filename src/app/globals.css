@@ -25,6 +25,11 @@
     --brand-font-size-small: 14px;
   }
 
+  html[lang="hi"] body,
+  html[lang="hi-IN"] body {
+    font-family: var(--brand-font-family), var(--font-noto-devanagari), "Noto Sans Devanagari", sans-serif;
+  }
+
   body {
     background-color: var(--brand-bg);
     color: var(--brand-text);

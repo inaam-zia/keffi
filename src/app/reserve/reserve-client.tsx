@@ -6,9 +6,10 @@ import CustomerNav from "@/components/customer-nav";
 import DeveloperCredit from "@/components/developer-credit";
 import { useCustomerLocale } from "@/components/customer-locale-provider";
 import { getDefaultBranding, type CafeBranding } from "@/lib/branding-types";
+import { customerInputLang } from "@/lib/customer-copy";
 
 export default function ReserveClient({ branding }: { branding: CafeBranding }) {
-  const { copy } = useCustomerLocale();
+  const { copy, locale } = useCustomerLocale();
   const [guestName, setGuestName] = useState("");
   const [phone, setPhone] = useState("");
   const [partySize, setPartySize] = useState("2");
@@ -103,6 +104,9 @@ export default function ReserveClient({ branding }: { branding: CafeBranding }) 
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
+                lang={customerInputLang(locale)}
+                autoCapitalize="off"
+                autoCorrect="off"
               />
             </label>
             {error ? <p className="text-sm text-red-600">{error}</p> : null}

@@ -12,6 +12,7 @@ import {
 } from "@/lib/receipt";
 import type { OrderItem, OrderWithItems } from "@/lib/types";
 import UpiPayPanel from "@/components/upi-pay-panel";
+import { displayMenuText, displaySpiceLabel, getCustomerCopy, type CustomerLocale } from "@/lib/customer-copy";
 
 type Props = {
   order: OrderWithItems;
@@ -21,6 +22,7 @@ type Props = {
   paymentQrLabel?: string | null;
   paymentUpiId?: string | null;
   paymentPayeeName?: string | null;
+  locale?: CustomerLocale;
 };
 
 export default function ThermalReceipt({
@@ -31,6 +33,7 @@ export default function ThermalReceipt({
   paymentQrLabel,
   paymentUpiId,
   paymentPayeeName,
+  locale = "en",
 }: Props) {
   const receipt = getReceiptConfig(branding.appName);
   const billNumber = getBillNumber(order.id);
@@ -114,7 +117,7 @@ export default function ThermalReceipt({
         </thead>
         <tbody>
           {order.order_items.map((item) => (
-            <ReceiptLine key={item.id} item={item} />
+            <ReceiptLine key={item.id} item={item} locale={locale} />
           ))}
         </tbody>
       </table>
@@ -215,16 +218,18 @@ export default function ThermalReceipt({
   );
 }
 
-function ReceiptLine({ item }: { item: OrderItem }) {
+function ReceiptLine({ item, locale }: { item: OrderItem; locale: CustomerLocale }) {
   const amount = item.item_price * item.quantity;
+  const copy = getCustomerCopy(locale);
+  const spice = displaySpiceLabel(item.spice_level || undefined, copy);
 
   return (
     <tr>
       <td className="thermal-receipt__item-name">
-        {item.item_name}
-        {item.spice_level || item.notes ? (
+        {displayMenuText(item.item_name, locale)}
+        {spice || item.notes ? (
           <span className="block text-[10px] font-normal opacity-80">
-            {[item.spice_level, item.notes].filter(Boolean).join(" · ")}
+            {[spice, item.notes].filter(Boolean).join(" · ")}
           </span>
         ) : null}
       </td>

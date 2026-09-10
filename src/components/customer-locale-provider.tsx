@@ -50,7 +50,7 @@ export function CustomerLocaleProvider({ children }: { children: ReactNode }) {
       /* ignore */
     }
     if (typeof document !== "undefined") {
-      document.documentElement.lang = next === "hi" ? "hi" : "en";
+      document.documentElement.lang = next === "hi" ? "hi-IN" : "en";
     }
   }, []);
 
@@ -59,7 +59,7 @@ export function CustomerLocaleProvider({ children }: { children: ReactNode }) {
   }, [locale, setLocale]);
 
   useEffect(() => {
-    document.documentElement.lang = locale === "hi" ? "hi" : "en";
+    document.documentElement.lang = locale === "hi" ? "hi-IN" : "en";
   }, [locale]);
 
   useEffect(() => {

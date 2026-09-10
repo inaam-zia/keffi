@@ -10,7 +10,12 @@ import { fetchMyActiveOrders, ORDER_STATUS_POLL_MS } from "@/lib/order-poll";
 import { getOrderGrandTotal } from "@/lib/receipt";
 import { useCustomerLocale } from "@/components/customer-locale-provider";
 import CustomerNav from "@/components/customer-nav";
-import { getCustomerCopy } from "@/lib/customer-copy";
+import {
+  customerInputLang,
+  displayMenuText,
+  displaySpiceLabel,
+  type CustomerCopy,
+} from "@/lib/customer-copy";
 import { buildWhatsAppBillText, whatsappBillUrl } from "@/lib/whatsapp-bill";
 import type { CafeBranding } from "@/lib/branding-types";
 import type { OrderItem, OrderStatus, OrderWithItems } from "@/lib/types";
@@ -30,7 +35,7 @@ function StatusTimeline({
   copy,
 }: {
   status: OrderStatus;
-  copy: ReturnType<typeof getCustomerCopy>;
+  copy: CustomerCopy;
 }) {
   if (status === "cancelled") {
     return (
@@ -128,7 +133,7 @@ function DishFeedbackForm({
   const [comment, setComment] = useState(existing?.comment ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const { copy } = useCustomerLocale();
+  const { copy, locale } = useCustomerLocale();
   const submitted = Boolean(existing);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -175,7 +180,7 @@ function DishFeedbackForm({
         <div className="flex items-start justify-between gap-2">
           <div>
             <p className="text-sm font-medium text-brand-heading">
-              {item.quantity}× {item.item_name}
+              {item.quantity}× {displayMenuText(item.item_name, locale)}
             </p>
             <p className="mt-1 text-xs text-green-700">{copy.thanksFeedback}</p>
           </div>
@@ -191,7 +196,7 @@ function DishFeedbackForm({
     <li className="rounded-xl border border-cafe-200 bg-cafe-50/80 px-3 py-3">
       <form onSubmit={handleSubmit}>
         <p className="text-sm font-medium text-brand-heading">
-          {item.quantity}× {item.item_name}
+          {item.quantity}× {displayMenuText(item.item_name, locale)}
         </p>
         <p className="mt-1 text-xs text-brand-muted">{copy.howWasDish}</p>
         <div className="mt-2">
@@ -204,6 +209,9 @@ function DishFeedbackForm({
           rows={2}
           className="order-input mt-2 min-h-[60px]"
           disabled={submitting}
+          lang={customerInputLang(locale)}
+          autoCapitalize="off"
+          autoCorrect="off"
         />
         {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
         <button
@@ -225,8 +233,9 @@ function OrderStatusCard({
 }: {
   order: OrderWithItems;
   branding: CafeBranding;
-  copy: ReturnType<typeof getCustomerCopy>;
+  copy: CustomerCopy;
 }) {
+  const { locale } = useCustomerLocale();
   const gst = {
     gstEnabled: branding.gstEnabled,
     cgstPercent: branding.cgstPercent,
@@ -255,8 +264,8 @@ function OrderStatusCard({
         {order.order_items.map((item) => (
           <li key={item.id} className="flex justify-between text-sm">
             <span className="text-brand-heading">
-              {item.quantity}× {item.item_name}
-              {item.spice_level ? ` · ${item.spice_level}` : ""}
+              {item.quantity}× {displayMenuText(item.item_name, locale)}
+              {item.spice_level ? ` · ${displaySpiceLabel(item.spice_level, copy)}` : ""}
               {item.notes ? (
                 <span className="mt-0.5 block text-xs text-amber-800">{item.notes}</span>
               ) : null}
@@ -324,7 +333,7 @@ export default function OrderStatusView({
   branding,
   onAddMore,
 }: Props) {
-  const { copy } = useCustomerLocale();
+  const { copy, locale } = useCustomerLocale();
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(true);
   const [feedbackByItemId, setFeedbackByItemId] = useState<Map<string, DishFeedback>>(
@@ -600,6 +609,7 @@ export default function OrderStatusView({
                 paymentQrLabel={paymentQrLabel}
                 paymentUpiId={paymentUpiId}
                 paymentPayeeName={paymentPayeeName}
+                locale={locale}
               />
               <div className="mt-5 border-t border-brand pt-4">
                 <p className="mb-3 text-xs font-bold uppercase tracking-wider text-brand-subtle">

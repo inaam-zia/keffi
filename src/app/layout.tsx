@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { CSSProperties } from "react";
-import { DM_Sans, Inter, Poppins, Lora, Open_Sans } from "next/font/google";
+import { DM_Sans, Inter, Poppins, Lora, Open_Sans, Noto_Sans_Devanagari } from "next/font/google";
 import "./globals.css";
 import BrandingStyles from "@/components/branding-styles";
 import { CustomerLocaleProvider } from "@/components/customer-locale-provider";
@@ -28,6 +28,11 @@ const openSans = Open_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-open-sans",
+});
+const notoDevanagari = Noto_Sans_Devanagari({
+  subsets: ["devanagari"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-noto-devanagari",
 });
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -74,7 +79,7 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`${dmSans.variable} ${inter.variable} ${poppins.variable} ${lora.variable} ${openSans.variable}`}
+      className={`${dmSans.variable} ${inter.variable} ${poppins.variable} ${lora.variable} ${openSans.variable} ${notoDevanagari.variable}`}
       style={themeStyle}
     >
       <body className={fontClass || undefined}>

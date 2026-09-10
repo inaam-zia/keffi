@@ -8,6 +8,7 @@ import {
 } from "@/lib/live-ordering";
 import { fetchLiveOrderingItems, LIVE_ORDERING_POLL_MS } from "@/lib/order-poll";
 import { useCustomerLocale } from "@/components/customer-locale-provider";
+import { displayMenuText } from "@/lib/customer-copy";
 
 function tableNumberFromPath(pathname: string): number | null {
   const match = pathname.match(/^\/(?:order|scan)\/(\d+)/);
@@ -18,7 +19,7 @@ function tableNumberFromPath(pathname: string): number | null {
 
 export default function LiveOrderingBar() {
   const pathname = usePathname() || "/";
-  const { copy } = useCustomerLocale();
+  const { copy, locale } = useCustomerLocale();
   const [itemNames, setItemNames] = useState<string[]>([]);
   const tableNumber = tableNumberFromPath(pathname);
 
@@ -69,7 +70,7 @@ export default function LiveOrderingBar() {
               className="live-ordering-chip"
               onClick={() => selectItem(name)}
             >
-              {liveOrderingDisplayName(name)}
+              {displayMenuText(liveOrderingDisplayName(name), locale)}
             </button>
           ))}
         </div>

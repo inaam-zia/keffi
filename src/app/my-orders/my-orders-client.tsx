@@ -9,6 +9,7 @@ import DeveloperCredit from "@/components/developer-credit";
 import TableHeading from "@/components/table-heading";
 import type { CafeBranding } from "@/lib/branding-types";
 import { getDefaultBranding } from "@/lib/branding-types";
+import { displayMenuText, displaySpiceLabel } from "@/lib/customer-copy";
 import { formatDate, formatPrice } from "@/lib/format";
 import { isValidEmail, normalizeEmail } from "@/lib/email";
 import { normalizePhone } from "@/lib/phone";
@@ -38,7 +39,7 @@ function OrderCard({
   order: OrderWithItems;
   branding: CafeBranding;
 }) {
-  const { copy } = useCustomerLocale();
+  const { copy, locale } = useCustomerLocale();
   const [saved, setSaved] = useState(false);
   const statusLabels: Record<string, string> = {
     new: copy.received,
@@ -78,8 +79,8 @@ function OrderCard({
       <ul className="mt-3 space-y-1 border-t border-cafe-100 pt-3 text-sm text-cafe-600">
         {order.order_items.map((item) => (
           <li key={item.id}>
-            {item.quantity}× {item.item_name}
-            {item.spice_level ? ` · ${item.spice_level}` : ""}
+            {item.quantity}× {displayMenuText(item.item_name, locale)}
+            {item.spice_level ? ` · ${displaySpiceLabel(item.spice_level, copy)}` : ""}
             {item.notes ? ` (${item.notes})` : ""}
           </li>
         ))}

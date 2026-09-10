@@ -1,3 +1,5 @@
+import { toHindiMenuText } from "@/lib/hindi-menu";
+
 export type CustomerLocale = "en" | "hi";
 
 export const CUSTOMER_LANG_KEY = "cafe-lang";
@@ -343,18 +345,42 @@ export function getCustomerCopy(locale: CustomerLocale): CustomerCopy {
   return (COPY[locale] || COPY.en) as CustomerCopy;
 }
 
+export function customerInputLang(locale: CustomerLocale): "hi-IN" | "en" {
+  return locale === "hi" ? "hi-IN" : "en";
+}
+
+export function displayMenuText(text: string, locale: CustomerLocale): string {
+  if (locale !== "hi" || !text) return text;
+  return toHindiMenuText(text);
+}
+
+export function displaySpiceLabel(
+  level: string | undefined,
+  copy: CustomerCopy
+): string {
+  if (!level) return "";
+  const key = level.trim().toLowerCase();
+  if (key === "mild") return copy.mild;
+  if (key === "medium") return copy.medium;
+  if (key === "hot") return copy.hot;
+  if (key === "none") return copy.none;
+  return level;
+}
+
 export function displayItemName(
   item: { name: string; name_hi?: string | null },
   locale: CustomerLocale
 ): string {
-  if (locale === "hi" && item.name_hi?.trim()) return item.name_hi.trim();
-  return item.name;
+  if (locale !== "hi") return item.name;
+  if (item.name_hi?.trim()) return item.name_hi.trim();
+  return toHindiMenuText(item.name);
 }
 
 export function displayItemDescription(
   item: { description: string; description_hi?: string | null },
   locale: CustomerLocale
 ): string {
-  if (locale === "hi" && item.description_hi?.trim()) return item.description_hi.trim();
-  return item.description || "";
+  if (locale !== "hi") return item.description || "";
+  if (item.description_hi?.trim()) return item.description_hi.trim();
+  return item.description ? toHindiMenuText(item.description) : "";
 }
