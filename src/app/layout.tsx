@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { DM_Sans, Inter, Poppins, Lora, Open_Sans } from "next/font/google";
 import "./globals.css";
 import BrandingStyles from "@/components/branding-styles";
+import LiveOrderingBar from "@/components/live-ordering-bar";
 import { getBranding } from "@/lib/branding";
 import { resolveFontFamilyId, themeToCssVars } from "@/lib/branding-types";
 
@@ -77,6 +78,7 @@ export default async function RootLayout({
     >
       <body className={fontClass || undefined}>
         <BrandingStyles branding={branding} />
+        <LiveOrderingBar />
         {children}
       </body>
     </html>

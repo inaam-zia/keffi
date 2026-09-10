@@ -26,12 +26,10 @@ export async function fetchMyActiveOrders(
 }
 
 export async function fetchLiveOrderingItems(
-  tableNumber: number
+  tableNumber?: number | null
 ): Promise<string[]> {
-  const res = await fetch(
-    `/api/orders/live-activity?table=${tableNumber}&_=${Date.now()}`,
-    noStore
-  );
+  const qs = tableNumber ? `table=${tableNumber}&` : "";
+  const res = await fetch(`/api/orders/live-activity?${qs}_=${Date.now()}`, noStore);
 
   if (!res.ok) return [];
 

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { uniqueLiveOrderItemNames } from "@/lib/live-ordering";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/supabase-errors";
-import { validateTableAccess } from "@/lib/table-session";
+import { getTableAccessFromCookie, validateTableAccess } from "@/lib/table-session";
 
 /**
  * Customer-facing: item names currently on other tables' active orders.
@@ -14,15 +14,18 @@ export async function GET(request: Request) {
   }
 
   const tableParam = new URL(request.url).searchParams.get("table");
-  const tableNumber = tableParam ? parseInt(tableParam, 10) : NaN;
+  const fromQuery = tableParam ? parseInt(tableParam, 10) : NaN;
+  const fromCookie = getTableAccessFromCookie()?.tableNumber;
+  const tableNumber =
+    fromQuery && !isNaN(fromQuery) ? fromQuery : fromCookie && !isNaN(fromCookie) ? fromCookie : NaN;
 
   if (!tableNumber || isNaN(tableNumber)) {
-    return NextResponse.json({ error: "Table number required" }, { status: 400 });
+    return NextResponse.json({ items: [] });
   }
 
   const sessionCheck = await validateTableAccess(tableNumber);
   if (!sessionCheck.ok && sessionCheck.sessionsEnabled) {
-    return NextResponse.json({ error: "Please scan the table QR" }, { status: 403 });
+    return NextResponse.json({ items: [] });
   }
 
   try {

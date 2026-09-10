@@ -1,4 +1,5 @@
 export const LIVE_ORDERING_LIMIT = 12;
+export const LIVE_ORDERING_SELECT_EVENT = "keffi:live-ordering-select";
 
 export type LiveOrderingOrder = {
   table_number: number;

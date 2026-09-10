@@ -4,6 +4,7 @@
 
 @layer base {
   :root {
+    --live-ordering-bar-height: 0px;
     --brand-primary: #8a5639;
     --brand-primary-hover: #714733;
     --brand-bg: #faf6f1;
@@ -249,10 +250,34 @@
     }
   }
 
+  .live-ordering-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    padding-top: env(safe-area-inset-top, 0px);
+    border-bottom: 1px solid color-mix(in srgb, var(--brand-border) 80%, transparent);
+    background-color: color-mix(in srgb, var(--brand-surface) 94%, transparent);
+    backdrop-filter: blur(12px);
+  }
+
+  body:has(.live-ordering-bar) {
+    --live-ordering-bar-height: calc(2.75rem + env(safe-area-inset-top, 0px));
+    padding-top: var(--live-ordering-bar-height);
+  }
+
+  .live-ordering-bar__inner {
+    @apply mx-auto flex max-w-lg items-center gap-2 px-4 py-2;
+    min-height: 2.75rem;
+  }
+
+  .live-ordering-bar__label {
+    @apply shrink-0 whitespace-nowrap text-[11px] font-bold leading-tight text-cafe-900;
+  }
+
   .live-ordering-rail {
-    @apply flex gap-2 overflow-x-auto pb-0.5;
-    margin-right: -1.25rem;
-    padding-right: 1.25rem;
+    @apply flex min-w-0 flex-1 gap-2 overflow-x-auto;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
   }
@@ -262,7 +287,7 @@
   }
 
   .live-ordering-chip {
-    @apply inline-flex shrink-0 items-center rounded-full border px-3 py-1.5 text-xs font-semibold;
+    @apply inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold;
     border-color: color-mix(in srgb, var(--brand-border) 90%, transparent);
     background-color: var(--brand-surface);
     color: var(--brand-heading);
