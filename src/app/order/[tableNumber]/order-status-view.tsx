@@ -7,7 +7,8 @@ import TableHeading from "@/components/table-heading";
 import ThermalReceipt from "@/components/thermal-receipt";
 import { formatPrice } from "@/lib/format";
 import { fetchMyActiveOrders, ORDER_STATUS_POLL_MS } from "@/lib/order-poll";
-import { consolidateOrdersForBill, getOrderGrandTotal } from "@/lib/receipt";
+import { consolidateOrdersForBill, getOrderBillTotals, getOrderGrandTotal } from "@/lib/receipt";
+import BillGstLines from "@/components/bill-gst-lines";
 import { useCustomerLocale } from "@/components/customer-locale-provider";
 import CustomerNav from "@/components/customer-nav";
 import TableAssistButtons from "@/components/table-assist-buttons";
@@ -247,6 +248,7 @@ function OrderStatusCard({
     served: copy.served,
     cancelled: copy.cancelled,
   };
+  const bill = getOrderBillTotals(order, gst);
   return (
     <div className="rounded-2xl border border-brand bg-brand-surface p-4 shadow-sm">
       <div className="mb-4">
@@ -256,8 +258,8 @@ function OrderStatusCard({
         <p className="text-sm font-semibold text-brand-heading">
           {labels[order.status]}
         </p>
-        <p className="font-bold text-brand-muted">
-          {formatPrice(getOrderGrandTotal(order, gst))}
+        <p className="font-bold text-brand-heading">
+          {formatPrice(bill.grandTotal)}
         </p>
       </div>
       <ul className="space-y-2 border-t border-brand pt-3">
@@ -276,6 +278,24 @@ function OrderStatusCard({
           </li>
         ))}
       </ul>
+      <div className="mt-3 space-y-1 border-t border-brand pt-3 text-sm">
+        <div className="flex justify-between text-brand-muted">
+          <span>{copy.subTotal}</span>
+          <span>{formatPrice(bill.subTotal)}</span>
+        </div>
+        {bill.applyGst ? (
+          <BillGstLines
+            bill={bill}
+            formatAmount={formatPrice}
+            lineClassName="flex justify-between text-xs text-brand-muted"
+            totalClassName="flex justify-between text-sm font-semibold text-brand-heading"
+          />
+        ) : null}
+        <div className="flex justify-between font-bold text-brand-heading">
+          <span>{copy.toPay}</span>
+          <span>{formatPrice(bill.grandTotal)}</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -462,7 +482,7 @@ export default function OrderStatusView({
   }, [allServed, allCancelled, loadBillBranding]);
 
   return (
-    <main className="order-bg mx-auto min-h-screen max-w-lg px-5 py-8">
+    <main className="order-bg mx-auto min-h-screen w-full max-w-lg px-5 py-8 md:max-w-5xl">
       <div className="mb-6">
         <CafeBrandingBlock branding={branding} logoSize="md" showTagline align="center" />
         <CustomerNav

@@ -581,7 +581,7 @@ function MenuCategorySection({
   );
 
   return (
-    <section id={`menu-cat-${sectionKey}`} data-category-key={sectionKey} className="scroll-mt-48">
+    <section id={`menu-cat-${sectionKey}`} data-category-key={sectionKey} className="scroll-mt-36">
       <div className="mb-3 flex items-center gap-2">
         <h2 className="order-category">{displayMenuText(title, locale)}</h2>
         <span className="text-[10px] font-semibold text-cafe-500">
@@ -593,7 +593,7 @@ function MenuCategorySection({
           </span>
         ) : null}
       </div>
-      <div className="space-y-3">
+      <div className="menu-item-list">
         {items.map((item) => (
           <MenuItemRow
             key={item.id}
@@ -1473,86 +1473,80 @@ export default function OrderClient({
   }
 
   return (
-    <main className={`order-bg mx-auto min-h-screen max-w-lg ${cartCount > 0 ? "pb-32" : "pb-16"}`}>
-      <header className="order-header sticky top-[var(--live-ordering-bar-height)] z-10 px-5 pb-3 pt-5">
-        <div className="min-w-0">
-          <CafeBrandingBlock branding={branding} logoSize="md" showTagline />
-          <div className="mt-2">
+    <main className={`order-bg mx-auto min-h-screen w-full max-w-lg md:max-w-5xl ${cartCount > 0 ? "pb-32" : "pb-16"}`}>
+      <div className="px-5 pb-2 pt-4 md:flex md:items-start md:justify-between md:gap-8">
+        <div className="min-w-0 md:flex-1">
+          <CafeBrandingBlock branding={branding} logoSize="sm" showTagline={false} />
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
             <TableHeading
               tableNumber={tableNumber}
               tableName={tableName}
-              size="md"
+              size="sm"
               tableWord={copy.table}
             />
-          </div>
-          {hasSavedDetails ? (
-            <p className="mt-1 text-xs text-brand-subtle">
-              {copy.orderingAs} <strong className="text-brand-muted">{customerName}</strong>
-            </p>
-          ) : null}
-        </div>
-
-        <CustomerNav
-          className="mt-3"
-          homeHref={`/order/${tableNumber}`}
-          onHomeClick={goToMenu}
-        />
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <span className="text-[11px] text-brand-muted">
-            {copy.waitTime} {waitMinutes} {copy.minutes}
-          </span>
-          {wifiSsid ? (
             <span className="text-[11px] text-brand-muted">
-              {copy.wifi}: {wifiSsid}
-              {wifiPassword ? ` · ${wifiPassword}` : ""}
+              {copy.waitTime} {waitMinutes} {copy.minutes}
             </span>
-          ) : null}
+            {wifiSsid ? (
+              <span className="text-[11px] text-brand-muted">
+                {copy.wifi}: {wifiSsid}
+                {wifiPassword ? ` · ${wifiPassword}` : ""}
+              </span>
+            ) : null}
+            {hasSavedDetails ? (
+              <span className="text-[11px] text-brand-subtle">
+                {copy.orderingAs} <strong className="text-brand-muted">{customerName}</strong>
+              </span>
+            ) : null}
+          </div>
         </div>
-        {busyMode ? (
-          <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
-            {copy.busy}
-          </p>
-        ) : null}
-        <div className="mt-2">
-          <TableAssistButtons
-            tableNumber={tableNumber}
-            canRequestBill={hasActiveOrders}
-            extra={
-              <a href="/reserve" className="table-assist-btn">
-                {copy.reserve}
-              </a>
-            }
+        <div className="mt-2 md:mt-0 md:w-72 md:shrink-0">
+          <CustomerNav
+            className="md:justify-end"
+            homeHref={`/order/${tableNumber}`}
+            onHomeClick={goToMenu}
           />
         </div>
-
-        <div className="mt-3">
-          <DietToggle value={dietFilter} onChange={changeDietFilter} />
+      </div>
+      {busyMode ? (
+        <p className="mx-5 mb-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+          {copy.busy}
+        </p>
+      ) : null}
+      <div className="px-5">
+        <TableAssistButtons
+          tableNumber={tableNumber}
+          canRequestBill={hasActiveOrders}
+          extra={
+            <a href="/reserve" className="table-assist-btn">
+              {copy.reserve}
+            </a>
+          }
+        />
+      </div>
+      {hasActiveOrders ? (
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 px-5">
+          <button
+            type="button"
+            onClick={viewOrderStatus}
+            className="text-xs font-semibold text-[var(--brand-primary)] underline-offset-2 hover:underline"
+          >
+            {copy.viewOrderStatus}
+          </button>
+          <button
+            type="button"
+            onClick={reorderLast}
+            className="text-xs font-semibold text-[var(--brand-primary)] underline-offset-2 hover:underline"
+          >
+            {copy.reorder}
+          </button>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-          {hasActiveOrders ? (
-            <>
-              <button
-                type="button"
-                onClick={viewOrderStatus}
-                className="text-xs font-semibold text-[var(--brand-primary)] underline-offset-2 hover:underline"
-              >
-                {copy.viewOrderStatus}
-              </button>
-              <button
-                type="button"
-                onClick={reorderLast}
-                className="text-xs font-semibold text-[var(--brand-primary)] underline-offset-2 hover:underline"
-              >
-                {copy.reorder}
-              </button>
-            </>
-          ) : (
-            <p className="text-xs text-brand-subtle">{copy.tapAdd}</p>
-          )}
-        </div>
+      ) : null}
 
+      <header className="order-header sticky top-[var(--live-ordering-bar-height)] z-10 px-5 pb-2 pt-2">
+        <DietToggle value={dietFilter} onChange={changeDietFilter} />
         {!loading && items.length > 0 ? (
-          <div className="relative mt-4">
+          <div className="relative mt-2">
             <svg
               className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-cafe-400"
               fill="none"
@@ -1596,7 +1590,7 @@ export default function OrderClient({
         ) : null}
 
         {!loading && visibleSections.length > 1 ? (
-          <div className="category-chip-rail mt-3">
+            <div className="category-chip-rail mt-2">
             <div
               ref={chipRailRef}
               className="category-chip-rail__scroll"
@@ -1811,8 +1805,8 @@ export default function OrderClient({
               <span className="shrink-0 text-sm font-bold tracking-wide">{copy.view}</span>
             </button>
           ) : (
-            <div className="cart-sheet__panel flex w-full flex-col">
-              <div className="flex items-center justify-between gap-3">
+            <div className="cart-sheet__panel w-full">
+              <div className="flex shrink-0 items-center justify-between gap-3">
                 <h3 className="text-lg font-bold text-cafe-900">{copy.yourCart}</h3>
                 <button
                   type="button"
@@ -1827,7 +1821,7 @@ export default function OrderClient({
                 </button>
               </div>
 
-              <div className="mt-4 flex-1 space-y-2 overflow-y-auto">
+              <div className="cart-sheet__items mt-3 space-y-2">
                 {cart.map((item) => (
                   <div key={item.lineId} className="cart-line">
                     <div className="cart-line__info">
@@ -1880,9 +1874,8 @@ export default function OrderClient({
                     </div>
                   </div>
                 ))}
-              </div>
 
-              <div className="mt-4 space-y-3 border-t border-cafe-200 pt-4">
+                <div className="space-y-3 pt-2">
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -1985,11 +1978,15 @@ export default function OrderClient({
                     />
                   </>
                 ) : null}
+                </div>
+              </div>
+
+              <div className="cart-sheet__checkout">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-cafe-600">{copy.toPay}</span>
                   <span className="font-bold text-cafe-900">{formatPrice(payableTotal)}</span>
                 </div>
-                <div>
+                <div className="mt-1">
                   <TableHeading
                     tableNumber={tableNumber}
                     tableName={tableName}
@@ -1999,17 +1996,19 @@ export default function OrderClient({
                 </div>
 
                 {!showCheckout ? (
-                  <SlideToPlaceOrder
-                    label={`${copy.placeOrder} · ${formatPrice(payableTotal)}`}
-                    successLabel={copy.orderPlaced}
-                    sendingLabel={copy.sendingOrder}
-                    disabled={submitting || busyMode}
-                    onConfirm={openCheckout}
-                  />
+                  <div className="mt-3">
+                    <SlideToPlaceOrder
+                      label={`${copy.placeOrder} · ${formatPrice(payableTotal)}`}
+                      successLabel={copy.orderPlaced}
+                      sendingLabel={copy.sendingOrder}
+                      disabled={submitting || busyMode}
+                      onConfirm={openCheckout}
+                    />
+                  </div>
                 ) : (
                   <form
                     onSubmit={submitOrder}
-                    className="space-y-4 rounded-2xl border border-cafe-200 bg-cafe-50/80 p-4"
+                    className="mt-3 max-h-[40dvh] space-y-4 overflow-y-auto rounded-2xl border border-cafe-200 bg-cafe-50/80 p-4"
                   >
                     <p className="text-sm font-semibold text-cafe-800">{copy.almostDone}</p>
 
