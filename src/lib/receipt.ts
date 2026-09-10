@@ -90,14 +90,16 @@ export function orderItemsSubtotal(
 export function getOrderBillTotals(
   order: {
     total?: number | null;
+    discount?: number | null;
     order_items?: Array<{ item_price: number; quantity: number }> | null;
   },
   options?: GstBillOptions
 ): BillTotals {
   const fromItems = orderItemsSubtotal(order.order_items);
+  const discount = roundMoney(Math.max(0, Number(order.discount) || 0));
   const subTotal =
     fromItems > 0 || (order.order_items?.length ?? 0) > 0
-      ? fromItems
+      ? Math.max(0, fromItems - discount)
       : roundMoney(Number(order.total) || 0);
   return calculateBillTotals(subTotal, options);
 }
@@ -106,6 +108,7 @@ export function getOrderBillTotals(
 export function getOrderGrandTotal(
   order: {
     total?: number | null;
+    discount?: number | null;
     order_items?: Array<{ item_price: number; quantity: number }> | null;
   },
   options?: GstBillOptions

@@ -17,6 +17,9 @@ type SettingsRow = {
   gst_percent?: number | string | null;
   cgst_percent?: number | string | null;
   sgst_percent?: number | string | null;
+  wifi_ssid?: string | null;
+  wifi_password?: string | null;
+  busy_mode?: boolean | null;
 };
 
 let cache: { data: CafeBranding; at: number } | null = null;
@@ -83,6 +86,9 @@ function rowToBranding(row: SettingsRow, defaults: CafeBranding): CafeBranding {
     gstin,
     cgstPercent,
     sgstPercent,
+    wifiSsid: row.wifi_ssid?.trim() || null,
+    wifiPassword: row.wifi_password?.trim() || null,
+    busyMode: Boolean(row.busy_mode),
   };
 }
 
@@ -92,7 +98,7 @@ async function loadSettingsRow(): Promise<SettingsRow | null> {
   const full = await supabase
     .from("cafe_settings")
     .select(
-      "app_name, logo_url, tagline, theme, gst_enabled, gstin, gst_percent, cgst_percent, sgst_percent"
+      "app_name, logo_url, tagline, theme, gst_enabled, gstin, gst_percent, cgst_percent, sgst_percent, wifi_ssid, wifi_password, busy_mode"
     )
     .eq("id", 1)
     .maybeSingle();

@@ -17,8 +17,9 @@ Everything runs in the cloud. The cafe only needs a browser bookmark.
 
 1. Go to [supabase.com](https://supabase.com) and create a free project
 2. Open **SQL Editor** → paste and run `supabase/schema.sql`
-3. Then paste and run `supabase/seed-teakuzz-menu.sql` to load the printed Teakuzz menu
-3. Go to **Settings → API** and copy:
+3. If this cafe already has a database from an earlier version, also run `supabase/add-ops-features.sql` (Wi-Fi, busy mode, coupons, loyalty, reservations, waiter calls).
+4. Then paste and run `supabase/seed-teakuzz-menu.sql` to load the printed Teakuzz menu
+5. Go to **Settings → API** and copy:
    - Project URL → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY`

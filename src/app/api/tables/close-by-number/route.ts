@@ -21,6 +21,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const tableNumber = parseInt(String(body.tableNumber ?? ""), 10);
+    const paymentMethod = String(body.paymentMethod || "").trim().toLowerCase();
 
     if (isNaN(tableNumber) || tableNumber < 1 || tableNumber > 99) {
       return NextResponse.json({ error: "Invalid table number" }, { status: 400 });
@@ -54,6 +55,14 @@ export async function POST(request: Request) {
         { error: `No table configured for number ${tableNumber}` },
         { status: 404 }
       );
+    }
+
+    if (paymentMethod === "upi" || paymentMethod === "cash" || paymentMethod === "card") {
+      await supabase
+        .from("orders")
+        .update({ payment_method: paymentMethod })
+        .eq("table_number", tableNumber)
+        .in("status", ["served", "new", "preparing"]);
     }
 
     const label = formatTableRef(data.table_number, data.label);

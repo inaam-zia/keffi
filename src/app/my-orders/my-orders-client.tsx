@@ -11,6 +11,7 @@ import { formatDate, formatPrice } from "@/lib/format";
 import { isValidEmail, normalizeEmail } from "@/lib/email";
 import { normalizePhone } from "@/lib/phone";
 import { getOrderGrandTotal } from "@/lib/receipt";
+import { saveReorderLines } from "@/lib/reorder";
 import type { CustomerIdentity } from "@/lib/auth";
 import type { OrderWithItems } from "@/lib/types";
 
@@ -42,6 +43,7 @@ function OrderCard({
   order: OrderWithItems;
   branding: CafeBranding;
 }) {
+  const [saved, setSaved] = useState(false);
   const total = getOrderGrandTotal(order, {
     gstEnabled: branding.gstEnabled,
     cgstPercent: branding.cgstPercent,
@@ -75,9 +77,28 @@ function OrderCard({
         {order.order_items.map((item) => (
           <li key={item.id}>
             {item.quantity}× {item.item_name}
+            {item.spice_level ? ` · ${item.spice_level}` : ""}
+            {item.notes ? ` (${item.notes})` : ""}
           </li>
         ))}
       </ul>
+      <button
+        type="button"
+        className="mt-3 text-sm font-semibold text-[var(--brand-primary)] underline-offset-2 hover:underline"
+        onClick={() => {
+          saveReorderLines(
+            order.order_items.map((item) => ({
+              name: item.item_name,
+              quantity: item.quantity,
+              notes: item.notes || undefined,
+              spiceLevel: item.spice_level || undefined,
+            }))
+          );
+          setSaved(true);
+        }}
+      >
+        {saved ? "Saved — scan your table QR to add these items" : "Save to reorder at table"}
+      </button>
     </div>
   );
 }

@@ -35,6 +35,9 @@ export async function PATCH(request: Request) {
       cgst_percent?: number;
       sgst_percent?: number;
       gst_percent?: number;
+      wifi_ssid?: string | null;
+      wifi_password?: string | null;
+      busy_mode?: boolean;
       updated_at: string;
     } = { updated_at: new Date().toISOString() };
 
@@ -58,6 +61,16 @@ export async function PATCH(request: Request) {
 
     if (typeof body.gstEnabled === "boolean") {
       updates.gst_enabled = body.gstEnabled;
+    }
+
+    if (typeof body.wifiSsid === "string") {
+      updates.wifi_ssid = body.wifiSsid.trim() || null;
+    }
+    if (typeof body.wifiPassword === "string") {
+      updates.wifi_password = body.wifiPassword.trim() || null;
+    }
+    if (typeof body.busyMode === "boolean") {
+      updates.busy_mode = body.busyMode;
     }
 
     if (body.gstin === null || typeof body.gstin === "string") {
@@ -157,6 +170,26 @@ export async function PATCH(request: Request) {
       const retry = await supabase
         .from("cafe_settings")
         .upsert({ id: 1, ...legacyUpdates })
+        .select()
+        .single();
+      error = retry.error;
+    }
+
+    if (
+      error &&
+      (error.message.includes("wifi_ssid") ||
+        error.message.includes("wifi_password") ||
+        error.message.includes("busy_mode"))
+    ) {
+      const {
+        wifi_ssid: _w,
+        wifi_password: _p,
+        busy_mode: _b,
+        ...withoutOps
+      } = updates;
+      const retry = await supabase
+        .from("cafe_settings")
+        .upsert({ id: 1, ...withoutOps })
         .select()
         .single();
       error = retry.error;

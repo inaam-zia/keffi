@@ -36,10 +36,12 @@ export default function ThermalReceipt({
   const billNumber = getBillNumber(order.id);
   const displayName = order.customer_name?.trim() || customerName.trim() || "Guest";
   const totalQty = order.order_items.reduce((sum, item) => sum + item.quantity, 0);
-  const subTotal = order.order_items.reduce(
+  const itemsTotal = order.order_items.reduce(
     (sum, item) => sum + item.item_price * item.quantity,
     0
   );
+  const discount = Math.max(0, Number(order.discount) || 0);
+  const subTotal = Math.max(0, itemsTotal - discount);
   const bill = calculateBillTotals(subTotal, {
     gstEnabled: branding.gstEnabled,
     cgstPercent: branding.cgstPercent,
@@ -88,7 +90,9 @@ export default function ThermalReceipt({
         </div>
         <div className="thermal-receipt__meta-col thermal-receipt__meta-col--right">
           <p>
-            <span className="thermal-receipt__meta-label">Dine In:</span>{" "}
+            <span className="thermal-receipt__meta-label">
+              {order.order_type === "takeaway" ? "Parcel:" : "Dine In:"}
+            </span>{" "}
             <strong>TB NO. {order.table_number}</strong>
           </p>
           <p>
@@ -120,6 +124,24 @@ export default function ThermalReceipt({
       <div className="thermal-receipt__totals-block">
         <div className="thermal-receipt__qty-subtotal-row">
           <span className="thermal-receipt__qty-line">Total Qty: {totalQty}</span>
+          <div className="thermal-receipt__subtotal">
+            <span>Items</span>
+            <span>{formatReceiptAmount(itemsTotal)}</span>
+          </div>
+        </div>
+        {discount > 0 ? (
+          <div className="thermal-receipt__qty-subtotal-row">
+            <span className="thermal-receipt__qty-line">
+              {order.coupon_code ? `Coupon ${order.coupon_code}` : "Discount"}
+            </span>
+            <div className="thermal-receipt__subtotal">
+              <span>Less</span>
+              <span>-{formatReceiptAmount(discount)}</span>
+            </div>
+          </div>
+        ) : null}
+        <div className="thermal-receipt__qty-subtotal-row">
+          <span className="thermal-receipt__qty-line" />
           <div className="thermal-receipt__subtotal">
             <span>Sub Total</span>
             <span>{formatReceiptAmount(bill.subTotal)}</span>
@@ -198,7 +220,14 @@ function ReceiptLine({ item }: { item: OrderItem }) {
 
   return (
     <tr>
-      <td className="thermal-receipt__item-name">{item.item_name}</td>
+      <td className="thermal-receipt__item-name">
+        {item.item_name}
+        {item.spice_level || item.notes ? (
+          <span className="block text-[10px] font-normal opacity-80">
+            {[item.spice_level, item.notes].filter(Boolean).join(" · ")}
+          </span>
+        ) : null}
+      </td>
       <td className="thermal-receipt__num">{item.quantity}</td>
       <td className="thermal-receipt__num">{formatReceiptAmount(item.item_price)}</td>
       <td className="thermal-receipt__num">{formatReceiptAmount(amount)}</td>

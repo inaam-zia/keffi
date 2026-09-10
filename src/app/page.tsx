@@ -16,6 +16,12 @@ export default async function HomePage() {
             No app needed — works in your phone browser.
           </div>
 
+          <Link href="/reserve" className="btn-secondary w-full">
+            Reserve a table
+          </Link>
+          <Link href="/my-orders" className="btn-secondary w-full">
+            My orders
+          </Link>
           <Link href="/admin/login" className="btn-secondary w-full">
             Admin login
           </Link>

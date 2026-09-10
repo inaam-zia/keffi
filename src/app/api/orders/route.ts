@@ -13,7 +13,11 @@ import {
 import type { PlaceOrderPayload } from "@/lib/types";
 import { buildComboOrderName, getOfferById } from "@/lib/offers";
 import { deductAndLogForOrder } from "@/lib/inventory";
+import { getBranding } from "@/lib/branding";
 import { getTableLabelMap } from "@/lib/tables";
+import { couponDiscount } from "@/lib/coupons";
+import { pointsEarnedForTotal, rupeesFromPoints } from "@/lib/loyalty";
+import { adjustLoyalty } from "@/lib/loyalty-store";
 
 export async function GET(request: Request) {
   if (!isAdminAuthenticated()) {
@@ -104,6 +108,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const branding = await getBranding();
+    if (branding.busyMode) {
+      return NextResponse.json(
+        { error: "Kitchen is full — new orders are paused. Please ask staff." },
+        { status: 423 }
+      );
+    }
+
     const tableAccess = await isTableOrderable(body.tableNumber);
     if (!tableAccess.ok) {
       const message =
@@ -134,7 +146,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid phone number" }, { status: 400 });
     }
 
-    const orderLines: { item_name: string; item_price: number; quantity: number }[] = [];
+    const orderLines: {
+      item_name: string;
+      item_price: number;
+      quantity: number;
+      notes?: string;
+      spice_level?: string | null;
+    }[] = [];
     const stockUsages: { menuItemId: string; quantity: number }[] = [];
 
     if (menuPayload.length) {
@@ -160,6 +178,8 @@ export async function POST(request: Request) {
           item_name: menuItem.name,
           item_price: menuItem.price,
           quantity: item.quantity,
+          notes: String(item.notes || "").trim().slice(0, 120) || undefined,
+          spice_level: item.spiceLevel ? String(item.spiceLevel).slice(0, 20) : null,
         });
         stockUsages.push({
           menuItemId: item.menuItemId,
@@ -205,10 +225,52 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No valid items in order" }, { status: 400 });
     }
 
-    const total = orderLines.reduce(
+    const subtotal = orderLines.reduce(
       (sum, line) => sum + line.item_price * line.quantity,
       0
     );
+
+    let discount = 0;
+    let couponCode: string | null = null;
+    const requestedCode = String(body.couponCode || "").trim().toUpperCase();
+    if (requestedCode) {
+      const { data: coupon } = await supabase
+        .from("coupons")
+        .select("*")
+        .eq("code", requestedCode)
+        .eq("active", true)
+        .maybeSingle();
+      if (!coupon) {
+        return NextResponse.json({ error: "Invalid coupon" }, { status: 400 });
+      }
+      discount += couponDiscount(coupon, subtotal);
+      couponCode = requestedCode;
+    }
+
+    let loyaltyRedeemed = 0;
+    const redeemPoints = Math.floor(Number(body.loyaltyRedeem) || 0);
+    if (redeemPoints > 0) {
+      const { data: account } = await supabase
+        .from("loyalty_accounts")
+        .select("points")
+        .eq("phone", phoneDigits)
+        .maybeSingle();
+      const available = Number(account?.points) || 0;
+      if (redeemPoints > available) {
+        return NextResponse.json({ error: "Not enough loyalty points" }, { status: 400 });
+      }
+      const remaining = Math.max(0, subtotal - discount);
+      const usedPoints = Math.min(
+        redeemPoints,
+        Math.floor(remaining / 0.1)
+      );
+      discount += rupeesFromPoints(usedPoints);
+      loyaltyRedeemed = usedPoints;
+    }
+
+    discount = Math.min(subtotal, Math.round(discount * 100) / 100);
+    const total = Math.round((subtotal - discount) * 100) / 100;
+    const orderType = body.orderType === "takeaway" ? "takeaway" : "dine_in";
 
     const { data: order, error: orderError } = await insertOrder(supabase, {
       table_number: body.tableNumber,
@@ -216,6 +278,11 @@ export async function POST(request: Request) {
       customer_phone: phoneDigits,
       total,
       status: "new",
+      notes: String(body.notes || "").trim().slice(0, 200) || null,
+      order_type: orderType,
+      coupon_code: couponCode,
+      discount,
+      loyalty_redeemed: loyaltyRedeemed,
     });
 
     if (orderError || !order) {
@@ -232,8 +299,28 @@ export async function POST(request: Request) {
       }))
     );
 
-    if (itemsError) {
+    if (itemsError?.message?.includes("notes") || itemsError?.message?.includes("spice_level")) {
+      const retry = await supabase.from("order_items").insert(
+        orderLines.map((line) => ({
+          order_id: order.id,
+          item_name: line.item_name,
+          item_price: line.item_price,
+          quantity: line.quantity,
+        }))
+      );
+      if (retry.error) {
+        return NextResponse.json({ error: formatSupabaseError(retry.error) }, { status: 500 });
+      }
+    } else if (itemsError) {
       return NextResponse.json({ error: formatSupabaseError(itemsError) }, { status: 500 });
+    }
+
+    if (loyaltyRedeemed > 0) {
+      await adjustLoyalty(phoneDigits, -loyaltyRedeemed);
+    }
+    const earned = pointsEarnedForTotal(total);
+    if (earned > 0) {
+      await adjustLoyalty(phoneDigits, earned);
     }
 
     // Deduct recipe ingredients from inventory (non-blocking for the customer)
@@ -263,7 +350,7 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({ orderId: order.id, total });
+    return NextResponse.json({ orderId: order.id, total, discount, loyaltyRedeemed });
   } catch (err) {
     return NextResponse.json({ error: formatSupabaseError(err) }, { status: 500 });
   }

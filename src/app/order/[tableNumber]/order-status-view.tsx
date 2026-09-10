@@ -8,6 +8,8 @@ import ThermalReceipt from "@/components/thermal-receipt";
 import { formatPrice } from "@/lib/format";
 import { fetchMyActiveOrders, ORDER_STATUS_POLL_MS } from "@/lib/order-poll";
 import { getOrderGrandTotal } from "@/lib/receipt";
+import { getCustomerCopy, type CustomerLocale } from "@/lib/customer-copy";
+import { buildWhatsAppBillText, whatsappBillUrl } from "@/lib/whatsapp-bill";
 import type { CafeBranding } from "@/lib/branding-types";
 import type { OrderItem, OrderStatus, OrderWithItems } from "@/lib/types";
 
@@ -238,6 +240,10 @@ function OrderStatusCard({
           <li key={item.id} className="flex justify-between text-sm">
             <span className="text-brand-heading">
               {item.quantity}× {item.item_name}
+              {item.spice_level ? ` · ${item.spice_level}` : ""}
+              {item.notes ? (
+                <span className="mt-0.5 block text-xs text-amber-800">{item.notes}</span>
+              ) : null}
             </span>
             <span className="text-brand-muted">
               {formatPrice(item.item_price * item.quantity)}
@@ -266,7 +272,7 @@ function buildConsolidatedOrder(orders: OrderWithItems[]): OrderWithItems | null
   const merged = new Map<string, OrderItem>();
   for (const order of sorted) {
     for (const item of order.order_items) {
-      const key = `${item.item_name}__${item.item_price}`;
+      const key = `${item.item_name}__${item.item_price}__${item.notes || ""}__${item.spice_level || ""}`;
       const existing = merged.get(key);
       if (existing) {
         existing.quantity += item.quantity;
@@ -277,10 +283,12 @@ function buildConsolidatedOrder(orders: OrderWithItems[]): OrderWithItems | null
   }
 
   const total = billable.reduce((sum, o) => sum + o.total, 0);
+  const discount = billable.reduce((sum, o) => sum + (Number(o.discount) || 0), 0);
 
   return {
     ...base,
     total,
+    discount,
     order_items: Array.from(merged.values()),
   };
 }
@@ -290,6 +298,7 @@ type Props = {
   tableName: string;
   customerName: string;
   branding: CafeBranding;
+  locale?: CustomerLocale;
   onAddMore: () => void;
 };
 
@@ -298,6 +307,7 @@ export default function OrderStatusView({
   tableName,
   customerName,
   branding,
+  locale = "en",
   onAddMore,
 }: Props) {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
@@ -311,6 +321,12 @@ export default function OrderStatusView({
   const [paymentPayeeName, setPaymentPayeeName] = useState<string | null>(null);
   /** Fresh branding for the bill (GST %, GSTIN) when all orders are served */
   const [billBranding, setBillBranding] = useState<CafeBranding>(branding);
+  const [waitMinutes, setWaitMinutes] = useState(5);
+  const [wifiSsid, setWifiSsid] = useState(branding.wifiSsid);
+  const [wifiPassword, setWifiPassword] = useState(branding.wifiPassword);
+  const [splitCount, setSplitCount] = useState(2);
+  const [requestNote, setRequestNote] = useState("");
+  const copy = getCustomerCopy(locale);
 
   const loadPaymentQr = useCallback(async () => {
     const res = await fetch(`/api/payment-qr?_=${Date.now()}`, { cache: "no-store" });
@@ -364,6 +380,16 @@ export default function OrderStatusView({
     void loadOrders();
     void loadPaymentQr();
 
+    async function loadOps() {
+      const res = await fetch("/api/cafe/ops", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      setWaitMinutes(Number(data.waitMinutes) || 5);
+      setWifiSsid(data.wifiSsid ?? null);
+      setWifiPassword(data.wifiPassword ?? null);
+    }
+    void loadOps();
+
     function tick() {
       if (document.visibilityState === "hidden") return;
       void loadOrders();
@@ -411,6 +437,41 @@ export default function OrderStatusView({
   }, [orders, allCancelled, allServed]);
 
   const firstName = customerName.trim().split(/\s+/)[0] || "there";
+  const gst = {
+    gstEnabled: billBranding.gstEnabled,
+    cgstPercent: billBranding.cgstPercent,
+    sgstPercent: billBranding.sgstPercent,
+  };
+  const billOrder =
+    consolidatedOrder ||
+    (orders.length
+      ? {
+          ...orders[0],
+          total: orders.reduce((sum, o) => sum + o.total, 0),
+          discount: orders.reduce((sum, o) => sum + (Number(o.discount) || 0), 0),
+          order_items: orders.flatMap((o) => o.order_items),
+        }
+      : null);
+  const grandTotal = billOrder ? getOrderGrandTotal(billOrder, gst) : 0;
+  const splits = Math.max(2, Math.min(12, Math.floor(splitCount) || 2));
+  const eachPays = Math.round((grandTotal / splits) * 100) / 100;
+  const whatsappHref = billOrder
+    ? whatsappBillUrl(
+        billOrder.customer_phone || "",
+        buildWhatsAppBillText(billOrder, branding.appName, grandTotal)
+      )
+    : "";
+
+  async function sendTableRequest(kind: "waiter" | "bill") {
+    const res = await fetch("/api/table-requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tableNumber, kind }),
+    });
+    setRequestNote(
+      res.ok ? (kind === "waiter" ? copy.waiterSent : copy.billSent) : "Could not send"
+    );
+  }
 
   // When the bill is generated (all served), reload GST/CGST/SGST from admin settings
   useEffect(() => {
@@ -467,6 +528,35 @@ export default function OrderStatusView({
           )}
         </div>
 
+        {!allServed && !allCancelled ? (
+          <p className="text-center text-sm text-brand-muted">
+            {copy.waitTime} {waitMinutes} {copy.minutes}
+          </p>
+        ) : null}
+        {wifiSsid ? (
+          <p className="text-center text-xs text-brand-muted">
+            {copy.wifi}: {wifiSsid}
+            {wifiPassword ? ` · ${wifiPassword}` : ""}
+          </p>
+        ) : null}
+        <div className="flex flex-wrap justify-center gap-2">
+          <button
+            type="button"
+            className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold shadow-sm"
+            onClick={() => void sendTableRequest("waiter")}
+          >
+            {copy.callWaiter}
+          </button>
+          <button
+            type="button"
+            className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold shadow-sm"
+            onClick={() => void sendTableRequest("bill")}
+          >
+            {copy.requestBill}
+          </button>
+        </div>
+        {requestNote ? <p className="text-center text-xs text-green-700">{requestNote}</p> : null}
+
         <div className="space-y-3">
           <h2 className="text-sm font-bold uppercase tracking-wider text-brand-subtle">
             {allServed && !allCancelled ? "Your bill" : "Order details"}
@@ -520,6 +610,36 @@ export default function OrderStatusView({
           <p className="rounded-xl bg-green-50 px-4 py-3 text-center text-sm text-green-800">
             Enjoy your meal! Rate your dishes above to help us improve.
           </p>
+        ) : null}
+
+        {orders.length > 0 && !allCancelled && grandTotal > 0 ? (
+          <div className="rounded-2xl border border-brand bg-brand-surface p-4">
+            <p className="text-sm font-semibold text-brand-heading">{copy.splitBill}</p>
+            <label className="mt-2 flex items-center justify-between gap-3 text-sm text-brand-muted">
+              <span>{copy.splitBetween}</span>
+              <input
+                type="number"
+                min={2}
+                max={12}
+                className="order-input w-20 py-1 text-right"
+                value={splits}
+                onChange={(e) => setSplitCount(Number(e.target.value) || 2)}
+              />
+            </label>
+            <p className="mt-2 text-sm font-bold text-brand-heading">
+              {copy.eachPays}: {formatPrice(eachPays)}
+            </p>
+            {whatsappHref ? (
+              <a
+                href={whatsappHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="order-btn mt-3 block w-full text-center"
+              >
+                {copy.sendWhatsApp}
+              </a>
+            ) : null}
+          </div>
         ) : null}
 
         <button type="button" onClick={onAddMore} className="order-btn w-full">

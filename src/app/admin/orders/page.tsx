@@ -78,6 +78,9 @@ export default function LiveOrdersPage() {
     { id: string; name: string; quantity: number; unit: string }[]
   >([]);
   const [branding, setBranding] = useState<CafeBranding>(getDefaultBranding());
+  const [requests, setRequests] = useState<
+    { id: string; table_number: number; kind: string }[]
+  >([]);
 
   const gst = useMemo(
     () => ({
@@ -102,6 +105,13 @@ export default function LiveOrdersPage() {
     setLoading(false);
   }
 
+  async function loadRequests() {
+    const res = await fetch("/api/table-requests", { cache: "no-store" });
+    if (!res.ok) return;
+    const data = await res.json();
+    setRequests(data.requests ?? []);
+  }
+
   async function loadLowStock() {
     try {
       const res = await fetch("/api/admin/inventory/alerts");
@@ -116,6 +126,7 @@ export default function LiveOrdersPage() {
   useEffect(() => {
     loadOrders();
     loadLowStock();
+    loadRequests();
     fetch(`/api/branding?_=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data: CafeBranding) =>
@@ -128,7 +139,10 @@ export default function LiveOrdersPage() {
         })
       )
       .catch(() => {});
-    const interval = setInterval(loadOrders, 8000);
+    const interval = setInterval(() => {
+      loadOrders();
+      loadRequests();
+    }, 8000);
     const stockInterval = setInterval(loadLowStock, 30000);
     return () => {
       clearInterval(interval);
@@ -206,7 +220,11 @@ export default function LiveOrdersPage() {
     }
   }
 
-  async function closeTable(tableNumber: number, tableLabel?: string | null) {
+  async function closeTable(
+    tableNumber: number,
+    tableLabel?: string | null,
+    paymentMethod?: string
+  ) {
     const title = tableLabel?.trim() || `Table ${tableNumber}`;
     if (
       !confirm(
@@ -223,7 +241,7 @@ export default function LiveOrdersPage() {
       const res = await fetch("/api/tables/close-by-number", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tableNumber }),
+        body: JSON.stringify({ tableNumber, paymentMethod }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -258,6 +276,35 @@ export default function LiveOrdersPage() {
       {success && (
         <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
           {success}
+        </div>
+      )}
+
+      {requests.length > 0 && (
+        <div className="card space-y-2 border border-amber-300 bg-amber-50">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-amber-900">
+            Table requests
+          </h3>
+          {requests.map((req) => (
+            <div key={req.id} className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold">
+                Table {req.table_number} · {req.kind === "bill" ? "Wants the bill" : "Call waiter"}
+              </p>
+              <button
+                type="button"
+                className="btn-secondary text-xs"
+                onClick={async () => {
+                  await fetch(`/api/table-requests/${req.id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status: "done" }),
+                  });
+                  await loadRequests();
+                }}
+              >
+                Done
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
@@ -307,16 +354,21 @@ export default function LiveOrdersPage() {
                     {table.guests} · {formatPrice(table.total)}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => closeTable(table.tableNumber, table.tableLabel)}
-                  disabled={closingTable === table.tableNumber}
-                  className="btn-primary text-xs disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {closingTable === table.tableNumber
-                    ? "Clearing…"
-                    : "Mark paid & clear"}
-                </button>
+                <div className="flex flex-wrap gap-1">
+                  {(["upi", "cash", "card"] as const).map((method) => (
+                    <button
+                      key={method}
+                      type="button"
+                      onClick={() =>
+                        closeTable(table.tableNumber, table.tableLabel, method)
+                      }
+                      disabled={closingTable === table.tableNumber}
+                      className="btn-primary text-xs capitalize disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {closingTable === table.tableNumber ? "Clearing…" : method}
+                    </button>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
@@ -418,6 +470,10 @@ export default function LiveOrdersPage() {
                   <li key={item.id} className="flex justify-between text-sm">
                     <span>
                       {item.quantity}× {item.item_name}
+                      {item.spice_level ? ` · ${item.spice_level}` : ""}
+                      {item.notes ? (
+                        <span className="block text-xs text-amber-800">Note: {item.notes}</span>
+                      ) : null}
                     </span>
                     <span className="text-cafe-600">
                       {formatPrice(item.item_price * item.quantity)}

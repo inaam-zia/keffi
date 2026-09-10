@@ -27,7 +27,8 @@ export default function AdminLoginForm() {
       return;
     }
 
-    router.push("/admin/orders");
+    const data = await res.json().catch(() => ({}));
+    router.push(typeof data.redirect === "string" ? data.redirect : "/admin/orders");
   }
 
   return (

@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { createHmac, timingSafeEqual } from "crypto";
+import { ADMIN_ROLE_COOKIE, isAdminRole, type AdminRole } from "@/lib/admin-role";
 
 const ADMIN_COOKIE = "cafe_admin_session";
 const CUSTOMER_COOKIE = "cafe_customer_session";
@@ -68,7 +69,13 @@ function decodeToken<T extends SessionPayload>(token: string): T | null {
 // --- Admin ---
 
 export function isAdminAuthenticated(): boolean {
-  return cookies().get(ADMIN_COOKIE)?.value === SESSION_VALUE;
+  const value = cookies().get(ADMIN_COOKIE)?.value;
+  return value === SESSION_VALUE;
+}
+
+export function getAdminRole(): AdminRole {
+  const raw = cookies().get(ADMIN_ROLE_COOKIE)?.value;
+  return isAdminRole(raw) ? raw : "owner";
 }
 
 export function getAdminCookieConfig() {
@@ -101,6 +108,25 @@ export async function verifyAdminPasswordAsync(password: string): Promise<boolea
     return verifyPasswordHash(password, adminPasswordHash);
   }
   return verifyAdminPassword(password);
+}
+
+export async function resolveAdminLoginRole(
+  password: string
+): Promise<import("@/lib/admin-role").AdminRole | null> {
+  if (!password) return null;
+  if (await verifyAdminPasswordAsync(password)) return "owner";
+
+  const { getStoredPasswordHashes, verifyPasswordHash } = await import(
+    "@/lib/password-store"
+  );
+  const hashes = await getStoredPasswordHashes();
+  if (hashes.kitchenPasswordHash && verifyPasswordHash(password, hashes.kitchenPasswordHash)) {
+    return "kitchen";
+  }
+  if (hashes.cashierPasswordHash && verifyPasswordHash(password, hashes.cashierPasswordHash)) {
+    return "cashier";
+  }
+  return null;
 }
 
 export function getCafeName(): string {

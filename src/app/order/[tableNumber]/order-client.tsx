@@ -11,8 +11,17 @@ import LazyMenuImage from "@/components/lazy-menu-image";
 import TableHeading from "@/components/table-heading";
 import OrderStatusView from "./order-status-view";
 import { formatOfferIncludes } from "@/lib/offers";
+import {
+  displayItemDescription,
+  displayItemName,
+  getCustomerCopy,
+  type CustomerLocale,
+} from "@/lib/customer-copy";
+import { couponDiscount } from "@/lib/coupons";
+import { maxRedeemablePoints, rupeesFromPoints } from "@/lib/loyalty";
+import { takeReorderLines } from "@/lib/reorder";
 import type { CafeBranding } from "@/lib/branding-types";
-import type { CartItem, MenuCategory, MenuItem, Offer, OrderWithItems } from "@/lib/types";
+import type { CartItem, Coupon, MenuCategory, MenuItem, Offer, OrderType, OrderWithItems } from "@/lib/types";
 
 type SavedCustomer = {
   name: string;
@@ -317,6 +326,7 @@ function MenuItemRow({
   item,
   quantity,
   isPreparing,
+  locale,
   onAdd,
   onUpdateQty,
   onOpenDetail,
@@ -324,10 +334,13 @@ function MenuItemRow({
   item: MenuItem;
   quantity: number;
   isPreparing: boolean;
+  locale: CustomerLocale;
   onAdd: () => void;
   onUpdateQty: (delta: number) => void;
   onOpenDetail: () => void;
 }) {
+  const name = displayItemName(item, locale);
+  const description = displayItemDescription(item, locale);
   return (
     <div
       role="button"
@@ -341,14 +354,30 @@ function MenuItemRow({
       }}
       className={`menu-item-card cursor-pointer ${quantity > 0 ? "menu-item-card--in-cart" : ""}`}
     >
-      <LazyMenuImage src={item.image_url} alt={item.name} className="menu-item-image" />
+      <LazyMenuImage src={item.image_url} alt={name} className="menu-item-image" />
       <div className="min-w-0 flex-1">
-        <p className="font-semibold leading-snug text-cafe-900">{item.name}</p>
-        {item.description ? (
+        <p className="font-semibold leading-snug text-cafe-900">{name}</p>
+        {description ? (
           <p className="mt-0.5 line-clamp-2 text-sm leading-snug text-cafe-500">
-            {item.description}
+            {description}
           </p>
         ) : null}
+        <div className="mt-1 flex flex-wrap gap-1">
+          {item.is_veg !== false ? (
+            <span className="rounded-full bg-green-50 px-1.5 py-0.5 text-[10px] font-semibold text-green-800">
+              Veg
+            </span>
+          ) : (
+            <span className="rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold text-red-800">
+              Non-veg
+            </span>
+          )}
+          {item.is_jain ? (
+            <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
+              Jain
+            </span>
+          ) : null}
+        </div>
         {isPreparing ? (
           <p className="mt-1 text-xs font-semibold text-amber-700">
             Preparing — tap ADD to get more
@@ -358,7 +387,7 @@ function MenuItemRow({
       </div>
       <div className="flex shrink-0 flex-col items-end justify-end self-stretch">
         <AddQtyControl
-          name={item.name}
+          name={name}
           quantity={quantity}
           onAdd={onAdd}
           onUpdateQty={onUpdateQty}
@@ -372,6 +401,7 @@ function MenuSuggestionCard({
   item,
   quantity,
   isPreparing,
+  locale,
   onAdd,
   onUpdateQty,
   onOpenDetail,
@@ -379,10 +409,12 @@ function MenuSuggestionCard({
   item: MenuItem;
   quantity: number;
   isPreparing: boolean;
+  locale: CustomerLocale;
   onAdd: () => void;
   onUpdateQty: (delta: number) => void;
   onOpenDetail: () => void;
 }) {
+  const name = displayItemName(item, locale);
   return (
     <div
       role="button"
@@ -400,11 +432,11 @@ function MenuSuggestionCard({
         <LazyMenuImage src={item.image_url} alt="" className="menu-suggestion-image" />
       ) : (
         <div className="menu-suggestion-placeholder text-lg font-bold text-cafe-500">
-          {item.name.charAt(0)}
+          {name.charAt(0)}
         </div>
       )}
       <p className="line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-tight text-cafe-900">
-        {item.name}
+        {name}
       </p>
       {isPreparing ? (
         <p className="mt-0.5 text-[10px] font-semibold text-amber-700">Preparing — add more?</p>
@@ -412,7 +444,7 @@ function MenuSuggestionCard({
       <div className="mt-2 flex items-center justify-between gap-1">
         <span className="text-xs font-bold text-cafe-700">{formatPrice(item.price)}</span>
         <AddQtyControl
-          name={item.name}
+          name={name}
           quantity={quantity}
           onAdd={onAdd}
           onUpdateQty={onUpdateQty}
@@ -437,6 +469,7 @@ function MenuCategorySection({
   items,
   cartQtyById,
   preparingItemIds,
+  locale,
   onAdd,
   onUpdateQty,
   onOpenDetail,
@@ -446,6 +479,7 @@ function MenuCategorySection({
   items: MenuItem[];
   cartQtyById: Map<string, number>;
   preparingItemIds: Set<string>;
+  locale: CustomerLocale;
   onAdd: (item: MenuItem) => void;
   onUpdateQty: (menuItemId: string, delta: number) => void;
   onOpenDetail: (item: MenuItem) => void;
@@ -475,6 +509,7 @@ function MenuCategorySection({
             item={item}
             quantity={cartQtyById.get(item.id) ?? 0}
             isPreparing={preparingItemIds.has(item.id)}
+            locale={locale}
             onAdd={() => onAdd(item)}
             onUpdateQty={(delta) => onUpdateQty(item.id, delta)}
             onOpenDetail={() => onOpenDetail(item)}
@@ -489,6 +524,8 @@ function ItemDetailSheet({
   item,
   quantity,
   isPreparing,
+  copy,
+  locale,
   onClose,
   onAdd,
   onUpdateQty,
@@ -496,10 +533,17 @@ function ItemDetailSheet({
   item: MenuItem;
   quantity: number;
   isPreparing: boolean;
+  copy: ReturnType<typeof getCustomerCopy>;
+  locale: CustomerLocale;
   onClose: () => void;
-  onAdd: () => void;
+  onAdd: (notes: string, spiceLevel: string) => void;
   onUpdateQty: (delta: number) => void;
 }) {
+  const [notes, setNotes] = useState("");
+  const [spice, setSpice] = useState("");
+  const name = displayItemName(item, locale);
+  const description = displayItemDescription(item, locale);
+
   return (
     <>
       <button
@@ -508,11 +552,11 @@ function ItemDetailSheet({
         aria-label="Close item details"
         onClick={onClose}
       />
-      <div className="item-detail-sheet" role="dialog" aria-modal="true" aria-label={item.name}>
+      <div className="item-detail-sheet" role="dialog" aria-modal="true" aria-label={name}>
           <div className="item-detail-sheet__panel w-full">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-lg font-bold text-cafe-900">{item.name}</p>
+              <p className="text-lg font-bold text-cafe-900">{name}</p>
               <p className="mt-1 text-base font-bold text-cafe-800">{formatPrice(item.price)}</p>
             </div>
             <button
@@ -526,15 +570,18 @@ function ItemDetailSheet({
           </div>
 
           {item.image_url ? (
-            <LazyMenuImage src={item.image_url} alt={item.name} className="item-detail-image" />
+            <LazyMenuImage src={item.image_url} alt={name} className="item-detail-image" />
           ) : (
             <div className="item-detail-image item-detail-image--placeholder">
-              {item.name.charAt(0)}
+              {name.charAt(0)}
             </div>
           )}
 
-          {item.description ? (
-            <p className="mt-4 text-sm leading-relaxed text-cafe-600">{item.description}</p>
+          {description ? (
+            <p className="mt-4 text-sm leading-relaxed text-cafe-600">{description}</p>
+          ) : null}
+          {item.allergens ? (
+            <p className="mt-2 text-xs text-amber-800">Allergens: {item.allergens}</p>
           ) : null}
 
           {isPreparing ? (
@@ -543,14 +590,38 @@ function ItemDetailSheet({
             </p>
           ) : null}
 
+          <label className="order-label mt-4">{copy.notes}</label>
+          <textarea
+            className="order-input mt-1"
+            rows={2}
+            placeholder={copy.notesPlaceholder}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+          <p className="order-label mt-3">{copy.spice}</p>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {["", "mild", "medium", "hot"].map((level) => (
+              <button
+                key={level || "none"}
+                type="button"
+                className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                  spice === level ? "border-[var(--brand-primary)] bg-[var(--brand-primary)] text-white" : ""
+                }`}
+                onClick={() => setSpice(level)}
+              >
+                {level === "" ? copy.none : copy[level as "mild" | "medium" | "hot"]}
+              </button>
+            ))}
+          </div>
+
           <div className="mt-5 flex items-center justify-between gap-3">
             <span className="text-sm font-semibold text-cafe-700">
               {quantity > 0 ? `${quantity} in cart` : "Add to order"}
             </span>
             <AddQtyControl
-              name={item.name}
+              name={name}
               quantity={quantity}
-              onAdd={onAdd}
+              onAdd={() => onAdd(notes, spice)}
               onUpdateQty={onUpdateQty}
             />
           </div>
@@ -589,11 +660,34 @@ export default function OrderClient({
   const [detailItem, setDetailItem] = useState<MenuItem | null>(null);
   const [activeCategoryKey, setActiveCategoryKey] = useState<string | null>(null);
   const [orderPlacedSuccess, setOrderPlacedSuccess] = useState(false);
+  const [locale, setLocale] = useState<CustomerLocale>("en");
+  const [dietFilter, setDietFilter] = useState<"all" | "veg" | "jain">("all");
+  const [waitMinutes, setWaitMinutes] = useState(5);
+  const [busyMode, setBusyMode] = useState(Boolean(branding.busyMode));
+  const [wifiSsid, setWifiSsid] = useState(branding.wifiSsid);
+  const [wifiPassword, setWifiPassword] = useState(branding.wifiPassword);
+  const [requestNote, setRequestNote] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [couponError, setCouponError] = useState("");
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
+  const [loyaltyRedeem, setLoyaltyRedeem] = useState(0);
+  const [orderType, setOrderType] = useState<OrderType>("dine_in");
+  const copy = getCustomerCopy(locale);
   const scrollMenuToTopRef = useRef(false);
   const chipRailRef = useRef<HTMLDivElement>(null);
   const skipObserverRef = useRef(false);
 
   const hasSavedDetails = Boolean(customerName.trim() && normalizePhone(customerPhone));
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("cafe-lang");
+      if (saved === "hi" || saved === "en") setLocale(saved);
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     try {
@@ -680,6 +774,61 @@ export default function OrderClient({
   }, [tableNumber, step]);
 
   useEffect(() => {
+    async function loadOps() {
+      const res = await fetch("/api/cafe/ops", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      setWaitMinutes(Number(data.waitMinutes) || 5);
+      setBusyMode(Boolean(data.busyMode));
+      setWifiSsid(data.wifiSsid ?? null);
+      setWifiPassword(data.wifiPassword ?? null);
+    }
+    void loadOps();
+    const interval = setInterval(loadOps, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const phone = normalizePhone(customerPhone);
+    if (phone.length < 10) {
+      setLoyaltyPoints(0);
+      return;
+    }
+    fetch(`/api/loyalty?phone=${encodeURIComponent(phone)}`)
+      .then((r) => r.json())
+      .then((data: { points?: number }) => setLoyaltyPoints(Number(data.points) || 0))
+      .catch(() => {});
+  }, [customerPhone]);
+
+  useEffect(() => {
+    if (!items.length) return;
+    const lines = takeReorderLines();
+    if (!lines.length) return;
+    setCart((prev) => {
+      if (prev.length) return prev;
+      const next: CartItem[] = [];
+      for (const line of lines) {
+        const menuItem = items.find(
+          (item) => item.available && item.name.toLowerCase() === line.name.toLowerCase()
+        );
+        if (!menuItem) continue;
+        next.push({
+          lineId: newCartLineId(),
+          kind: "menu",
+          menuItemId: menuItem.id,
+          name: menuItem.name,
+          price: menuItem.price,
+          quantity: line.quantity,
+          notes: line.notes,
+          spiceLevel: line.spiceLevel,
+        });
+      }
+      return next.length ? next : prev;
+    });
+    setShowCart(true);
+  }, [items]);
+
+  useEffect(() => {
     function onSelect(event: Event) {
       const name = (event as CustomEvent<string>).detail;
       if (typeof name !== "string") return;
@@ -737,12 +886,14 @@ export default function OrderClient({
   const itemsByCategory = useMemo(() => {
     const grouped = new Map<string, MenuItem[]>();
     for (const item of items) {
+      if (dietFilter === "veg" && item.is_veg === false) continue;
+      if (dietFilter === "jain" && item.is_jain !== true) continue;
       const key = item.category_id || "other";
       if (!grouped.has(key)) grouped.set(key, []);
       grouped.get(key)!.push(item);
     }
     return grouped;
-  }, [items]);
+  }, [items, dietFilter]);
 
   const categoryNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -759,8 +910,11 @@ export default function OrderClient({
 
     const filtered = new Map<string, MenuItem[]>();
     for (const item of items) {
+      if (dietFilter === "veg" && item.is_veg === false) continue;
+      if (dietFilter === "jain" && item.is_jain !== true) continue;
       const categoryName = categoryNameById.get(item.category_id || "") || "";
-      const haystack = `${item.name} ${item.description || ""} ${categoryName}`.toLowerCase();
+      const haystack =
+        `${item.name} ${item.name_hi || ""} ${item.description || ""} ${item.description_hi || ""} ${categoryName}`.toLowerCase();
       if (!haystack.includes(normalizedSearch)) continue;
 
       const key = item.category_id || "other";
@@ -768,7 +922,7 @@ export default function OrderClient({
       filtered.get(key)!.push(item);
     }
     return filtered;
-  }, [items, itemsByCategory, categoryNameById, normalizedSearch]);
+  }, [items, itemsByCategory, categoryNameById, normalizedSearch, dietFilter]);
 
   const visibleSections = useMemo((): CategorySection[] => {
     const sections: CategorySection[] = [];
@@ -835,6 +989,10 @@ export default function OrderClient({
 
   const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
+  const couponOff = appliedCoupon ? couponDiscount(appliedCoupon, cartTotal) : 0;
+  const maxLoyalty = maxRedeemablePoints(loyaltyPoints, Math.max(0, cartTotal - couponOff));
+  const loyaltyOff = rupeesFromPoints(Math.min(loyaltyRedeem, maxLoyalty));
+  const payableTotal = Math.max(0, Math.round((cartTotal - couponOff - loyaltyOff) * 100) / 100);
 
   useEffect(() => {
     if (!visibleSections.length) {
@@ -887,14 +1045,19 @@ export default function OrderClient({
     }, 600);
   }
 
-  function addToCart(item: MenuItem) {
+  function addToCart(item: MenuItem, notes = "", spiceLevel = "") {
+    const note = notes.trim();
     setCart((prev) => {
-      const existing = prev.find((c) => c.kind === "menu" && c.menuItemId === item.id);
+      const existing = prev.find(
+        (c) =>
+          c.kind === "menu" &&
+          c.menuItemId === item.id &&
+          (c.notes || "") === note &&
+          (c.spiceLevel || "") === spiceLevel
+      );
       if (existing) {
         return prev.map((c) =>
-          c.kind === "menu" && c.menuItemId === item.id
-            ? { ...c, quantity: c.quantity + 1 }
-            : c
+          c.lineId === existing.lineId ? { ...c, quantity: c.quantity + 1 } : c
         );
       }
       return [
@@ -906,6 +1069,8 @@ export default function OrderClient({
           name: item.name,
           price: item.price,
           quantity: 1,
+          notes: note || undefined,
+          spiceLevel: spiceLevel || undefined,
         },
       ];
     });
@@ -941,13 +1106,22 @@ export default function OrderClient({
   }
 
   function updateQty(menuItemId: string, delta: number) {
+    setCart((prev) => {
+      const indices = prev
+        .map((c, i) => (c.kind === "menu" && c.menuItemId === menuItemId ? i : -1))
+        .filter((i) => i >= 0);
+      if (!indices.length) return prev;
+      const target = delta > 0 ? indices[0] : indices[indices.length - 1];
+      return prev
+        .map((c, i) => (i === target ? { ...c, quantity: c.quantity + delta } : c))
+        .filter((c) => c.quantity > 0);
+    });
+  }
+
+  function updateLineQty(lineId: string, delta: number) {
     setCart((prev) =>
       prev
-        .map((c) =>
-          c.kind === "menu" && c.menuItemId === menuItemId
-            ? { ...c, quantity: c.quantity + delta }
-            : c
-        )
+        .map((c) => (c.lineId === lineId ? { ...c, quantity: c.quantity + delta } : c))
         .filter((c) => c.quantity > 0)
     );
   }
@@ -1011,10 +1185,18 @@ export default function OrderClient({
         customerPhone: phone,
         items: cart
           .filter((c) => c.kind === "menu" && c.menuItemId)
-          .map((c) => ({ menuItemId: c.menuItemId!, quantity: c.quantity })),
+          .map((c) => ({
+            menuItemId: c.menuItemId!,
+            quantity: c.quantity,
+            notes: c.notes,
+            spiceLevel: c.spiceLevel,
+          })),
         offers: cart
           .filter((c) => c.kind === "offer" && c.offerId)
           .map((c) => ({ offerId: c.offerId!, quantity: c.quantity })),
+        couponCode: couponCode || undefined,
+        loyaltyRedeem: Math.min(loyaltyRedeem, maxLoyalty) || undefined,
+        orderType,
       }),
     });
 
@@ -1074,6 +1256,39 @@ export default function OrderClient({
     setStep("done");
   }
 
+  function reorderLast() {
+    const source = activeOrders[0];
+    if (!source) return;
+    for (const line of source.order_items) {
+      const menuItem = items.find(
+        (item) => item.available && item.name.toLowerCase() === line.item_name.toLowerCase()
+      );
+      if (!menuItem) continue;
+      for (let i = 0; i < line.quantity; i++) {
+        addToCart(menuItem, line.notes || "", line.spice_level || "");
+      }
+    }
+    setShowCart(true);
+  }
+
+  async function applyCoupon() {
+    setCouponError("");
+    const code = couponCode.trim();
+    if (!code) {
+      setAppliedCoupon(null);
+      return;
+    }
+    const res = await fetch(`/api/coupons?code=${encodeURIComponent(code)}`);
+    const data = await res.json();
+    if (!res.ok || !data.coupon) {
+      setAppliedCoupon(null);
+      setCouponError("Invalid coupon");
+      return;
+    }
+    setAppliedCoupon(data.coupon as Coupon);
+    setCouponCode(data.coupon.code);
+  }
+
   function openItemDetail(item: MenuItem) {
     setShowCart(false);
     setShowCheckout(false);
@@ -1088,6 +1303,7 @@ export default function OrderClient({
         tableName={tableName}
         customerName={customerName}
         branding={branding}
+        locale={locale}
         onAddMore={orderAgain}
       />
     );
@@ -1108,15 +1324,104 @@ export default function OrderClient({
           ) : null}
         </div>
 
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="rounded-full border border-brand px-2.5 py-1 text-[11px] font-semibold"
+            onClick={() => {
+              const next = locale === "en" ? "hi" : "en";
+              setLocale(next);
+              try {
+                localStorage.setItem("cafe-lang", next);
+              } catch {
+                /* ignore */
+              }
+            }}
+          >
+            {copy.language}
+          </button>
+          <span className="text-[11px] text-brand-muted">
+            {copy.waitTime} {waitMinutes} {copy.minutes}
+          </span>
+          {wifiSsid ? (
+            <span className="text-[11px] text-brand-muted">
+              {copy.wifi}: {wifiSsid}
+              {wifiPassword ? ` · ${wifiPassword}` : ""}
+            </span>
+          ) : null}
+        </div>
+        {busyMode ? (
+          <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+            {copy.busy}
+          </p>
+        ) : null}
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold shadow-sm"
+            onClick={async () => {
+              const res = await fetch("/api/table-requests", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ tableNumber, kind: "waiter" }),
+              });
+              setRequestNote(res.ok ? copy.waiterSent : "Could not send");
+            }}
+          >
+            {copy.callWaiter}
+          </button>
+          <button
+            type="button"
+            className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold shadow-sm"
+            onClick={async () => {
+              const res = await fetch("/api/table-requests", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ tableNumber, kind: "bill" }),
+              });
+              setRequestNote(res.ok ? copy.billSent : "Could not send");
+            }}
+          >
+            {copy.requestBill}
+          </button>
+          <a href="/reserve" className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold shadow-sm">
+            {copy.reserve}
+          </a>
+        </div>
+        {requestNote ? <p className="mt-1 text-xs text-green-700">{requestNote}</p> : null}
+
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-          {hasActiveOrders ? (
+          {(["all", "veg", "jain"] as const).map((key) => (
             <button
+              key={key}
               type="button"
-              onClick={viewOrderStatus}
-              className="text-xs font-semibold text-[var(--brand-primary)] underline-offset-2 hover:underline"
+              onClick={() => setDietFilter(key)}
+              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                dietFilter === key
+                  ? "bg-[var(--brand-primary)] text-white"
+                  : "bg-white text-brand-muted"
+              }`}
             >
-              View order status →
+              {key === "all" ? copy.all : key === "veg" ? copy.veg : copy.jain}
             </button>
+          ))}
+          {hasActiveOrders ? (
+            <>
+              <button
+                type="button"
+                onClick={viewOrderStatus}
+                className="text-xs font-semibold text-[var(--brand-primary)] underline-offset-2 hover:underline"
+              >
+                View order status →
+              </button>
+              <button
+                type="button"
+                onClick={reorderLast}
+                className="text-xs font-semibold text-[var(--brand-primary)] underline-offset-2 hover:underline"
+              >
+                {copy.reorder}
+              </button>
+            </>
           ) : (
             <p className="text-xs text-brand-subtle">Tap ADD to build your order</p>
           )}
@@ -1240,12 +1545,19 @@ export default function OrderClient({
                 </p>
               </div>
               <div className="menu-suggestions">
-                {suggestions.map((item) => (
+                {suggestions
+                  .filter((item) => {
+                    if (dietFilter === "veg" && item.is_veg === false) return false;
+                    if (dietFilter === "jain" && item.is_jain !== true) return false;
+                    return true;
+                  })
+                  .map((item) => (
                   <MenuSuggestionCard
                     key={item.id}
                     item={item}
                     quantity={cartQtyById.get(item.id) ?? 0}
                     isPreparing={preparingItemIds.has(item.id)}
+                    locale={locale}
                     onAdd={() => addToCart(item)}
                     onUpdateQty={(delta) => updateQty(item.id, delta)}
                     onOpenDetail={() => openItemDetail(item)}
@@ -1264,6 +1576,7 @@ export default function OrderClient({
                 items={section.items}
                 cartQtyById={cartQtyById}
                 preparingItemIds={preparingItemIds}
+                locale={locale}
                 onAdd={addToCart}
                 onUpdateQty={updateQty}
                 onOpenDetail={openItemDetail}
@@ -1278,8 +1591,10 @@ export default function OrderClient({
           item={detailItem}
           quantity={cartQtyById.get(detailItem.id) ?? 0}
           isPreparing={preparingItemIds.has(detailItem.id)}
+          copy={copy}
+          locale={locale}
           onClose={() => setDetailItem(null)}
-          onAdd={() => addToCart(detailItem)}
+          onAdd={(notes, spice) => addToCart(detailItem, notes, spice)}
           onUpdateQty={(delta) => updateQty(detailItem.id, delta)}
         />
       ) : null}
@@ -1325,7 +1640,7 @@ export default function OrderClient({
               <span className="min-w-0 flex-1 text-left font-semibold">
                 View cart
                 <span className="mt-0.5 block text-xs font-medium opacity-90">
-                  {cartCount} item{cartCount === 1 ? "" : "s"} · {formatPrice(cartTotal)}
+                  {cartCount} item{cartCount === 1 ? "" : "s"} · {formatPrice(payableTotal)}
                 </span>
               </span>
               <span className="shrink-0 text-sm font-bold tracking-wide">VIEW →</span>
@@ -1355,6 +1670,11 @@ export default function OrderClient({
                       {item.includes ? (
                         <p className="mt-0.5 text-xs leading-snug text-cafe-500">{item.includes}</p>
                       ) : null}
+                      {item.notes || item.spiceLevel ? (
+                        <p className="mt-0.5 text-xs text-amber-800">
+                          {[item.spiceLevel, item.notes].filter(Boolean).join(" · ")}
+                        </p>
+                      ) : null}
                       <p className="mt-1 text-sm text-cafe-500">
                         {formatPrice(item.price)}
                         {item.quantity > 1
@@ -1368,9 +1688,7 @@ export default function OrderClient({
                         onClick={() =>
                           item.kind === "offer" && item.offerId
                             ? updateOfferQty(item.offerId, -1)
-                            : item.menuItemId
-                              ? updateQty(item.menuItemId, -1)
-                              : undefined
+                            : updateLineQty(item.lineId, -1)
                         }
                         className="qty-btn"
                         aria-label="Decrease quantity"
@@ -1383,9 +1701,7 @@ export default function OrderClient({
                         onClick={() =>
                           item.kind === "offer" && item.offerId
                             ? updateOfferQty(item.offerId, 1)
-                            : item.menuItemId
-                              ? updateQty(item.menuItemId, 1)
-                              : undefined
+                            : updateLineQty(item.lineId, 1)
                         }
                         className="qty-btn qty-btn-plus"
                         aria-label="Increase quantity"
@@ -1398,9 +1714,93 @@ export default function OrderClient({
               </div>
 
               <div className="mt-4 space-y-3 border-t border-cafe-200 pt-4">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className={`flex-1 rounded-full px-3 py-2 text-xs font-semibold ${
+                      orderType === "dine_in"
+                        ? "bg-[var(--brand-primary)] text-white"
+                        : "bg-white text-cafe-700"
+                    }`}
+                    onClick={() => setOrderType("dine_in")}
+                  >
+                    {copy.dineIn}
+                  </button>
+                  <button
+                    type="button"
+                    className={`flex-1 rounded-full px-3 py-2 text-xs font-semibold ${
+                      orderType === "takeaway"
+                        ? "bg-[var(--brand-primary)] text-white"
+                        : "bg-white text-cafe-700"
+                    }`}
+                    onClick={() => setOrderType("takeaway")}
+                  >
+                    {copy.takeaway}
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    className="order-input flex-1"
+                    placeholder={copy.coupon}
+                    value={couponCode}
+                    onChange={(e) => {
+                      setCouponCode(e.target.value);
+                      setCouponError("");
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="rounded-full bg-white px-3 py-2 text-xs font-semibold shadow-sm"
+                    onClick={() => void applyCoupon()}
+                  >
+                    {copy.apply}
+                  </button>
+                </div>
+                {couponError ? <p className="text-xs text-red-600">{couponError}</p> : null}
+                {appliedCoupon ? (
+                  <p className="text-xs text-green-700">
+                    {appliedCoupon.code}
+                    {appliedCoupon.description ? ` · ${appliedCoupon.description}` : ""}
+                  </p>
+                ) : null}
+                {loyaltyPoints > 0 ? (
+                  <label className="flex items-center justify-between gap-2 text-xs text-cafe-700">
+                    <span>
+                      {copy.loyalty}: {loyaltyPoints} ({copy.redeem} {maxLoyalty})
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={maxLoyalty}
+                      className="order-input w-24 py-1 text-right"
+                      value={Math.min(loyaltyRedeem, maxLoyalty)}
+                      onChange={(e) =>
+                        setLoyaltyRedeem(
+                          Math.min(maxLoyalty, Math.max(0, Math.floor(Number(e.target.value) || 0)))
+                        )
+                      }
+                    />
+                  </label>
+                ) : null}
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-cafe-600">Items total</span>
                   <span className="font-bold text-cafe-900">{formatPrice(cartTotal)}</span>
+                </div>
+                {couponOff > 0 ? (
+                  <div className="flex items-center justify-between text-sm text-green-800">
+                    <span>Coupon</span>
+                    <span>−{formatPrice(couponOff)}</span>
+                  </div>
+                ) : null}
+                {loyaltyOff > 0 ? (
+                  <div className="flex items-center justify-between text-sm text-green-800">
+                    <span>{copy.loyalty}</span>
+                    <span>−{formatPrice(loyaltyOff)}</span>
+                  </div>
+                ) : null}
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-cafe-600">To pay</span>
+                  <span className="font-bold text-cafe-900">{formatPrice(payableTotal)}</span>
                 </div>
                 <div>
                   <TableHeading tableNumber={tableNumber} tableName={tableName} size="sm" />
@@ -1408,8 +1808,8 @@ export default function OrderClient({
 
                 {!showCheckout ? (
                   <SlideToPlaceOrder
-                    label={`Place order · ${formatPrice(cartTotal)}`}
-                    disabled={submitting}
+                    label={`Place order · ${formatPrice(payableTotal)}`}
+                    disabled={submitting || busyMode}
                     onConfirm={openCheckout}
                   />
                 ) : (
@@ -1460,8 +1860,8 @@ export default function OrderClient({
 
                     {checkoutError ? <p className="text-sm text-red-600">{checkoutError}</p> : null}
 
-                    <button type="submit" disabled={submitting} className="order-btn w-full">
-                      {submitting ? "Sending order…" : `Confirm · ${formatPrice(cartTotal)}`}
+                    <button type="submit" disabled={submitting || busyMode} className="order-btn w-full">
+                      {submitting ? "Sending order…" : `Confirm · ${formatPrice(payableTotal)}`}
                     </button>
                   </form>
                 )}

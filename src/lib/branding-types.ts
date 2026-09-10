@@ -32,6 +32,9 @@ export type CafeBranding = {
   cgstPercent: number;
   /** SGST percentage on subtotal (e.g. 2.5) */
   sgstPercent: number;
+  wifiSsid: string | null;
+  wifiPassword: string | null;
+  busyMode: boolean;
 };
 
 export const DEFAULT_THEME: CafeTheme = {
@@ -110,6 +113,9 @@ export function getDefaultBranding(): CafeBranding {
     gstin: null,
     cgstPercent: 0,
     sgstPercent: 0,
+    wifiSsid: null,
+    wifiPassword: null,
+    busyMode: false,
   };
 }
 

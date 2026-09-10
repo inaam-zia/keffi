@@ -26,32 +26,53 @@ export function verifyPasswordHash(password: string, stored: string): boolean {
 export type StoredPasswordHashes = {
   adminPasswordHash: string | null;
   paymentQrPasswordHash: string | null;
+  kitchenPasswordHash: string | null;
+  cashierPasswordHash: string | null;
 };
 
 export async function getStoredPasswordHashes(): Promise<StoredPasswordHashes> {
   if (!isSupabaseConfigured()) {
-    return { adminPasswordHash: null, paymentQrPasswordHash: null };
+    return {
+      adminPasswordHash: null,
+      paymentQrPasswordHash: null,
+      kitchenPasswordHash: null,
+      cashierPasswordHash: null,
+    };
   }
 
   try {
     const supabase = createServerClient();
     const { data, error } = await supabase
       .from("cafe_settings")
-      .select("admin_password_hash, payment_qr_password_hash")
+      .select(
+        "admin_password_hash, payment_qr_password_hash, kitchen_password_hash, cashier_password_hash"
+      )
       .eq("id", 1)
       .maybeSingle();
 
     if (error || !data) {
-      return { adminPasswordHash: null, paymentQrPasswordHash: null };
+      return {
+        adminPasswordHash: null,
+        paymentQrPasswordHash: null,
+        kitchenPasswordHash: null,
+        cashierPasswordHash: null,
+      };
     }
 
     return {
       adminPasswordHash: (data.admin_password_hash as string | null) || null,
       paymentQrPasswordHash:
         (data.payment_qr_password_hash as string | null) || null,
+      kitchenPasswordHash: (data.kitchen_password_hash as string | null) || null,
+      cashierPasswordHash: (data.cashier_password_hash as string | null) || null,
     };
   } catch {
-    return { adminPasswordHash: null, paymentQrPasswordHash: null };
+    return {
+      adminPasswordHash: null,
+      paymentQrPasswordHash: null,
+      kitchenPasswordHash: null,
+      cashierPasswordHash: null,
+    };
   }
 }
 
@@ -131,4 +152,44 @@ export async function savePaymentQrPasswordHash(
     return { error: error.message };
   }
   return {};
+}
+
+async function saveRolePasswordHash(
+  column: "kitchen_password_hash" | "cashier_password_hash",
+  hash: string | null
+): Promise<{ error?: string }> {
+  if (!isSupabaseConfigured()) return { error: "Database not configured" };
+
+  const supabase = createServerClient();
+  const now = new Date().toISOString();
+  const { data: existing } = await supabase
+    .from("cafe_settings")
+    .select("id")
+    .eq("id", 1)
+    .maybeSingle();
+
+  const row = { [column]: hash, updated_at: now };
+  const { error } = existing
+    ? await supabase.from("cafe_settings").update(row).eq("id", 1)
+    : await supabase.from("cafe_settings").insert({
+        id: 1,
+        app_name: process.env.NEXT_PUBLIC_CAFE_NAME || "Cafe",
+        ...row,
+      });
+
+  if (error) {
+    if (error.message.includes(column) || error.message.includes("schema cache")) {
+      return { error: "Run supabase/add-ops-features.sql in Supabase SQL editor first." };
+    }
+    return { error: error.message };
+  }
+  return {};
+}
+
+export async function saveKitchenPasswordHash(hash: string | null) {
+  return saveRolePasswordHash("kitchen_password_hash", hash);
+}
+
+export async function saveCashierPasswordHash(hash: string | null) {
+  return saveRolePasswordHash("cashier_password_hash", hash);
 }

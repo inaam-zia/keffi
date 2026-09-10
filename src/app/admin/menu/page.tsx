@@ -28,11 +28,16 @@ export default function MenuPage() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [form, setForm] = useState({
     name: "",
+    name_hi: "",
     description: "",
+    description_hi: "",
     price: "",
     category_id: "",
     imageFile: null as File | null,
     imagePreview: "",
+    is_veg: true,
+    is_jain: false,
+    allergens: "",
   });
   const [uploading, setUploading] = useState(false);
   const [search, setSearch] = useState("");
@@ -86,10 +91,15 @@ export default function MenuPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name,
+          name_hi: form.name_hi,
           description: form.description,
+          description_hi: form.description_hi,
           price: parseFloat(form.price),
           category_id: form.category_id || null,
           image_url: imageUrl,
+          is_veg: form.is_veg,
+          is_jain: form.is_jain,
+          allergens: form.allergens,
         }),
       });
 
@@ -103,11 +113,16 @@ export default function MenuPage() {
       if (form.imagePreview) URL.revokeObjectURL(form.imagePreview);
       setForm({
         name: "",
+        name_hi: "",
         description: "",
+        description_hi: "",
         price: "",
         category_id: "",
         imageFile: null,
         imagePreview: "",
+        is_veg: true,
+        is_jain: false,
+        allergens: "",
       });
       setShowForm(false);
       loadMenu();
@@ -358,6 +373,42 @@ export default function MenuPage() {
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             className="input-field"
           />
+          <input
+            placeholder="Hindi name (optional)"
+            value={form.name_hi}
+            onChange={(e) => setForm({ ...form, name_hi: e.target.value })}
+            className="input-field"
+          />
+          <input
+            placeholder="Hindi description (optional)"
+            value={form.description_hi}
+            onChange={(e) => setForm({ ...form, description_hi: e.target.value })}
+            className="input-field"
+          />
+          <input
+            placeholder="Allergens (optional, e.g. dairy, nuts)"
+            value={form.allergens}
+            onChange={(e) => setForm({ ...form, allergens: e.target.value })}
+            className="input-field"
+          />
+          <div className="flex flex-wrap gap-4 text-sm">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={form.is_veg}
+                onChange={(e) => setForm({ ...form, is_veg: e.target.checked })}
+              />
+              Veg
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={form.is_jain}
+                onChange={(e) => setForm({ ...form, is_jain: e.target.checked })}
+              />
+              Jain
+            </label>
+          </div>
           <select
             value={form.category_id}
             onChange={(e) => setForm({ ...form, category_id: e.target.value })}

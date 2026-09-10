@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 type Status = {
   adminPasswordCustomized: boolean;
   paymentQrPasswordCustomized: boolean;
+  kitchenPasswordCustomized: boolean;
+  cashierPasswordCustomized: boolean;
   envAdminFallback: boolean;
   envPaymentQrFallback: boolean;
 };
@@ -37,6 +39,14 @@ export default function SettingsPage() {
   const [cgstPercent, setCgstPercent] = useState("2.5");
   const [sgstPercent, setSgstPercent] = useState("2.5");
   const [savingGst, setSavingGst] = useState(false);
+  const [wifiSsid, setWifiSsid] = useState("");
+  const [wifiPassword, setWifiPassword] = useState("");
+  const [busyMode, setBusyMode] = useState(false);
+  const [savingOps, setSavingOps] = useState(false);
+  const [kitchenForm, setKitchenForm] = useState(emptyAdminForm);
+  const [cashierForm, setCashierForm] = useState(emptyAdminForm);
+  const [savingKitchen, setSavingKitchen] = useState(false);
+  const [savingCashier, setSavingCashier] = useState(false);
 
   async function loadStatus() {
     const res = await fetch("/api/admin/passwords");
@@ -64,6 +74,9 @@ export default function SettingsPage() {
         ? String(data.sgstPercent)
         : "2.5"
     );
+    setWifiSsid(data.wifiSsid || "");
+    setWifiPassword(data.wifiPassword || "");
+    setBusyMode(Boolean(data.busyMode));
   }
 
   useEffect(() => {
@@ -71,7 +84,7 @@ export default function SettingsPage() {
   }, []);
 
   async function changePassword(
-    kind: "admin" | "payment_qr",
+    kind: "admin" | "payment_qr" | "kitchen" | "cashier",
     form: typeof emptyAdminForm
   ) {
     setError("");
@@ -307,6 +320,63 @@ export default function SettingsPage() {
         </button>
       </form>
 
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setSavingOps(true);
+          setError("");
+          setSuccess("");
+          const res = await fetch("/api/branding", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ wifiSsid, wifiPassword, busyMode }),
+          });
+          const data = await res.json();
+          setSavingOps(false);
+          if (!res.ok) {
+            setError(data.error || "Could not save");
+            return;
+          }
+          setSuccess(
+            data.busyMode
+              ? "Busy mode on — customers cannot place new orders."
+              : "Floor settings saved."
+          );
+        }}
+        className="card space-y-4"
+      >
+        <div>
+          <h3 className="font-bold text-brand-heading">Floor</h3>
+          <p className="mt-1 text-sm text-brand-muted">
+            Wi-Fi is shown on the customer order screen. Busy mode pauses new orders.
+          </p>
+        </div>
+        <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-brand bg-brand-surface px-4 py-3">
+          <input
+            type="checkbox"
+            checked={busyMode}
+            onChange={(e) => setBusyMode(e.target.checked)}
+            className="h-4 w-4 rounded border-brand"
+          />
+          <span className="text-sm font-medium text-brand-heading">Busy mode — pause new orders</span>
+        </label>
+        <input
+          className="input-field"
+          placeholder="Wi-Fi name (SSID)"
+          value={wifiSsid}
+          onChange={(e) => setWifiSsid(e.target.value)}
+        />
+        <input
+          className="input-field"
+          placeholder="Wi-Fi password"
+          value={wifiPassword}
+          onChange={(e) => setWifiPassword(e.target.value)}
+        />
+        <button type="submit" className="btn-primary" disabled={savingOps}>
+          {savingOps ? "Saving…" : "Save floor settings"}
+        </button>
+      </form>
+
       <form onSubmit={onSaveAdmin} className="card space-y-4">
         <div>
           <h3 className="font-bold text-brand-heading">Admin login password</h3>
@@ -370,6 +440,98 @@ export default function SettingsPage() {
         </div>
         <button type="submit" className="btn-primary" disabled={savingAdmin}>
           {savingAdmin ? "Saving…" : "Update admin password"}
+        </button>
+      </form>
+
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setSavingKitchen(true);
+          await changePassword("kitchen", kitchenForm);
+          setKitchenForm(emptyAdminForm);
+          setSavingKitchen(false);
+        }}
+        className="card space-y-3"
+      >
+        <h3 className="font-bold text-brand-heading">Kitchen password</h3>
+        <p className="text-sm text-brand-muted">
+          Separate login for kitchen display. Use the same admin login page.
+          {status?.kitchenPasswordCustomized ? " A kitchen password is set." : " Not set yet."}
+        </p>
+        <input
+          type="password"
+          className="input-field"
+          placeholder="Current admin password"
+          value={kitchenForm.currentPassword}
+          onChange={(e) => setKitchenForm({ ...kitchenForm, currentPassword: e.target.value })}
+          required
+        />
+        <input
+          type="password"
+          className="input-field"
+          placeholder="New kitchen password"
+          value={kitchenForm.newPassword}
+          onChange={(e) => setKitchenForm({ ...kitchenForm, newPassword: e.target.value })}
+          minLength={4}
+          required
+        />
+        <input
+          type="password"
+          className="input-field"
+          placeholder="Confirm kitchen password"
+          value={kitchenForm.confirmPassword}
+          onChange={(e) => setKitchenForm({ ...kitchenForm, confirmPassword: e.target.value })}
+          minLength={4}
+          required
+        />
+        <button type="submit" className="btn-primary" disabled={savingKitchen}>
+          {savingKitchen ? "Saving…" : "Save kitchen password"}
+        </button>
+      </form>
+
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setSavingCashier(true);
+          await changePassword("cashier", cashierForm);
+          setCashierForm(emptyAdminForm);
+          setSavingCashier(false);
+        }}
+        className="card space-y-3"
+      >
+        <h3 className="font-bold text-brand-heading">Cashier password</h3>
+        <p className="text-sm text-brand-muted">
+          Login for bills, table map, and day close.
+          {status?.cashierPasswordCustomized ? " A cashier password is set." : " Not set yet."}
+        </p>
+        <input
+          type="password"
+          className="input-field"
+          placeholder="Current admin password"
+          value={cashierForm.currentPassword}
+          onChange={(e) => setCashierForm({ ...cashierForm, currentPassword: e.target.value })}
+          required
+        />
+        <input
+          type="password"
+          className="input-field"
+          placeholder="New cashier password"
+          value={cashierForm.newPassword}
+          onChange={(e) => setCashierForm({ ...cashierForm, newPassword: e.target.value })}
+          minLength={4}
+          required
+        />
+        <input
+          type="password"
+          className="input-field"
+          placeholder="Confirm cashier password"
+          value={cashierForm.confirmPassword}
+          onChange={(e) => setCashierForm({ ...cashierForm, confirmPassword: e.target.value })}
+          minLength={4}
+          required
+        />
+        <button type="submit" className="btn-primary" disabled={savingCashier}>
+          {savingCashier ? "Saving…" : "Save cashier password"}
         </button>
       </form>
 

@@ -10,6 +10,8 @@ import {
   getStoredPasswordHashes,
   hashPassword,
   saveAdminPasswordHash,
+  saveCashierPasswordHash,
+  saveKitchenPasswordHash,
   savePaymentQrPasswordHash,
 } from "@/lib/password-store";
 
@@ -22,6 +24,8 @@ export async function GET() {
   return NextResponse.json({
     adminPasswordCustomized: Boolean(hashes.adminPasswordHash),
     paymentQrPasswordCustomized: Boolean(hashes.paymentQrPasswordHash),
+    kitchenPasswordCustomized: Boolean(hashes.kitchenPasswordHash),
+    cashierPasswordCustomized: Boolean(hashes.cashierPasswordHash),
     envAdminFallback: Boolean(process.env.ADMIN_PASSWORD),
     envPaymentQrFallback: Boolean(
       process.env.PAYMENT_QR_PASSWORD || process.env.ADMIN_PASSWORD
@@ -41,7 +45,7 @@ export async function POST(request: Request) {
     const newPassword = String(body.newPassword || "");
     const confirmPassword = String(body.confirmPassword || "");
 
-    if (kind !== "admin" && kind !== "payment_qr") {
+    if (kind !== "admin" && kind !== "payment_qr" && kind !== "kitchen" && kind !== "cashier") {
       return NextResponse.json({ error: "Invalid password type" }, { status: 400 });
     }
 
@@ -81,6 +85,29 @@ export async function POST(request: Request) {
         ok: true,
         logout: true,
         message: "Admin login password updated. Please sign in again.",
+      });
+    }
+
+    if (kind === "kitchen" || kind === "cashier") {
+      if (!(await verifyAdminPasswordAsync(currentPassword))) {
+        return NextResponse.json(
+          { error: "Current admin password is incorrect" },
+          { status: 401 }
+        );
+      }
+      const result =
+        kind === "kitchen"
+          ? await saveKitchenPasswordHash(hashPassword(newPassword))
+          : await saveCashierPasswordHash(hashPassword(newPassword));
+      if (result.error) {
+        return NextResponse.json({ error: result.error }, { status: 503 });
+      }
+      return NextResponse.json({
+        ok: true,
+        message:
+          kind === "kitchen"
+            ? "Kitchen password updated. Staff can sign in on the same login page."
+            : "Cashier password updated. Staff can sign in on the same login page.",
       });
     }
 

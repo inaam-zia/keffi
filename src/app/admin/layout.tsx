@@ -12,12 +12,19 @@ const adminFontStyle = {
   fontFamily: "var(--font-open-sans), system-ui, sans-serif",
 } as CSSProperties;
 
-const links = [
+import { navLinksForRole, type AdminRole } from "@/lib/admin-role";
+
+const allLinks = [
   { href: "/admin/orders", label: "Live orders" },
+  { href: "/admin/kitchen", label: "Kitchen" },
+  { href: "/admin/floor", label: "Tables" },
+  { href: "/admin/day-close", label: "Day close" },
   { href: "/admin/dashboard", label: "Dashboard" },
   { href: "/admin/customers", label: "Customers" },
   { href: "/admin/menu", label: "Menu" },
   { href: "/admin/offers", label: "Offers" },
+  { href: "/admin/coupons", label: "Coupons" },
+  { href: "/admin/reservations", label: "Reservations" },
   { href: "/admin/inventory", label: "Inventory" },
   { href: "/admin/recipes", label: "Recipes" },
   { href: "/admin/insights", label: "Insights" },
@@ -33,6 +40,19 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { newOrderCount } = useNewOrders();
   const [lowStockCount, setLowStockCount] = useState(0);
+  const [role, setRole] = useState<AdminRole>("owner");
+  const links = navLinksForRole(role, allLinks);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.role === "kitchen" || data.role === "cashier" || data.role === "owner") {
+          setRole(data.role);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,7 +86,14 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     >
       <header className="sticky top-0 z-40 shrink-0 border-b border-brand bg-brand-surface/95 backdrop-blur-md [padding-top:env(safe-area-inset-top)]">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:py-4">
-          <h1 className="text-base font-bold text-brand-heading sm:text-lg">Cafe Admin</h1>
+          <h1 className="text-base font-bold text-brand-heading sm:text-lg">
+            Cafe Admin
+            {role !== "owner" ? (
+              <span className="ml-2 text-xs font-medium capitalize text-brand-muted">
+                · {role}
+              </span>
+            ) : null}
+          </h1>
           <button
             onClick={logout}
             className="shrink-0 text-sm text-brand-muted hover:text-brand-heading"
