@@ -17,7 +17,6 @@ import {
   displaySpiceLabel,
   type CustomerCopy,
 } from "@/lib/customer-copy";
-import { buildWhatsAppBillText, whatsappBillUrl } from "@/lib/whatsapp-bill";
 import type { CafeBranding } from "@/lib/branding-types";
 import type { OrderItem, OrderStatus, OrderWithItems } from "@/lib/types";
 
@@ -326,6 +325,7 @@ export default function OrderStatusView({
   const [waitMinutes, setWaitMinutes] = useState(5);
   const [wifiSsid, setWifiSsid] = useState(branding.wifiSsid);
   const [wifiPassword, setWifiPassword] = useState(branding.wifiPassword);
+  const [splitCount, setSplitCount] = useState(2);
 
   const loadPaymentQr = useCallback(async () => {
     const res = await fetch(`/api/payment-qr?_=${Date.now()}`, { cache: "no-store" });
@@ -451,12 +451,9 @@ export default function OrderStatusView({
           order_items: orders.flatMap((o) => o.order_items),
         }
       : null);
-  const whatsappHref = billOrder
-    ? whatsappBillUrl(
-        billOrder.customer_phone || "",
-        buildWhatsAppBillText(billOrder, branding.appName, gst)
-      )
-    : "";
+  const grandTotal = billOrder ? getOrderGrandTotal(billOrder, gst) : 0;
+  const splits = Math.max(2, Math.min(12, Math.floor(splitCount) || 2));
+  const eachPays = Math.round((grandTotal / splits) * 100) / 100;
 
   // When the bill is generated (all served), reload GST/CGST/SGST from admin settings
   useEffect(() => {
@@ -602,15 +599,24 @@ export default function OrderStatusView({
           </p>
         ) : null}
 
-        {orders.length > 0 && !allCancelled && whatsappHref ? (
-          <a
-            href={whatsappHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="order-btn block w-full text-center"
-          >
-            {copy.sendWhatsApp}
-          </a>
+        {orders.length > 0 && !allCancelled && grandTotal > 0 ? (
+          <div className="rounded-2xl border border-brand bg-brand-surface p-4">
+            <p className="text-sm font-semibold text-brand-heading">{copy.splitBill}</p>
+            <label className="mt-2 flex items-center justify-between gap-3 text-sm text-brand-muted">
+              <span>{copy.splitBetween}</span>
+              <input
+                type="number"
+                min={2}
+                max={12}
+                className="order-input w-20 py-1 text-right"
+                value={splits}
+                onChange={(e) => setSplitCount(Number(e.target.value) || 2)}
+              />
+            </label>
+            <p className="mt-2 text-sm font-bold text-brand-heading">
+              {copy.eachPays}: {formatPrice(eachPays)}
+            </p>
+          </div>
         ) : null}
 
         <button type="button" onClick={onAddMore} className="order-btn w-full">

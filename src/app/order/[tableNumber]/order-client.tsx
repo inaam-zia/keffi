@@ -44,7 +44,7 @@ import {
   writeMenuSearch,
 } from "@/lib/customer-menu-session";
 import type { CafeBranding } from "@/lib/branding-types";
-import type { CartItem, Coupon, MenuCategory, MenuItem, Offer, OrderType, OrderWithItems } from "@/lib/types";
+import type { CartItem, Coupon, MenuCategory, MenuItem, Offer, OrderStatus, OrderType, OrderWithItems } from "@/lib/types";
 
 type SavedCustomer = {
   name: string;
@@ -73,6 +73,62 @@ function newCartLineId() {
 
 function cartStorageKey(tableNumber: number) {
   return `cafe-cart-table-${tableNumber}`;
+}
+
+type OrderedLine = {
+  quantity: number;
+  status: OrderStatus;
+};
+
+function statusRank(status: OrderStatus): number {
+  if (status === "new") return 0;
+  if (status === "preparing") return 1;
+  if (status === "served") return 2;
+  return 9;
+}
+
+function mergeOrderedLines(orders: OrderWithItems[]): Map<string, OrderedLine> {
+  const map = new Map<string, OrderedLine>();
+  for (const order of orders) {
+    if (order.status === "cancelled") continue;
+    for (const line of order.order_items) {
+      const key = line.item_name.trim().toLowerCase();
+      if (!key) continue;
+      const existing = map.get(key);
+      if (existing) {
+        existing.quantity += line.quantity;
+        if (statusRank(order.status) < statusRank(existing.status)) {
+          existing.status = order.status;
+        }
+      } else {
+        map.set(key, { quantity: line.quantity, status: order.status });
+      }
+    }
+  }
+  return map;
+}
+
+function orderStatusLabel(status: OrderStatus, copy: CustomerCopy): string {
+  if (status === "new") return copy.received;
+  if (status === "preparing") return copy.preparing;
+  if (status === "served") return copy.served;
+  return copy.cancelled;
+}
+
+function OrderedBadge({ ordered, copy }: { ordered: OrderedLine; copy: CustomerCopy }) {
+  const color =
+    ordered.status === "served"
+      ? "text-green-700"
+      : ordered.status === "preparing"
+        ? "text-blue-800"
+        : "text-amber-800";
+  return (
+    <p className={`font-semibold ${color}`}>
+      {copy.alreadyOrdered
+        .replace("{qty}", String(ordered.quantity))
+        .replace("{status}", orderStatusLabel(ordered.status, copy))}
+    </p>
+  );
 }
 
 const SLIDE_THUMB_SIZE = 56;
@@ -306,13 +362,13 @@ function AddQtyControl({
 function OfferCard({
   offer,
   quantity,
-  isBlocked,
+  ordered,
   onAdd,
   onUpdateQty,
 }: {
   offer: Offer;
   quantity: number;
-  isBlocked: boolean;
+  ordered: OrderedLine | null;
   onAdd: () => void;
   onUpdateQty: (delta: number) => void;
 }) {
@@ -322,7 +378,7 @@ function OfferCard({
 
   return (
     <div
-      className={`menu-suggestion-card w-[11rem] ${quantity > 0 ? "menu-suggestion-card--in-cart" : ""}`}
+      className={`menu-suggestion-card w-[11rem] ${quantity > 0 || ordered ? "menu-suggestion-card--in-cart" : ""}`}
     >
       {offer.image_url ? (
         <LazyMenuImage src={offer.image_url} alt="" className="menu-suggestion-image" />
@@ -333,11 +389,11 @@ function OfferCard({
         {name}
       </p>
       <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-cafe-500">{includes}</p>
-      {isBlocked && (
-        <p className="mt-1 text-[10px] font-semibold text-amber-700">
-          {copy.preparingAdd}
-        </p>
-      )}
+      {ordered ? (
+        <div className="mt-1 text-[10px] leading-snug">
+          <OrderedBadge ordered={ordered} copy={copy} />
+        </div>
+      ) : null}
       <div className="mt-2 flex items-center justify-between gap-1">
         <span className="text-xs font-bold text-cafe-700">{formatPrice(offer.price)}</span>
         <AddQtyControl
@@ -355,7 +411,7 @@ function OfferCard({
 function MenuItemRow({
   item,
   quantity,
-  isPreparing,
+  ordered,
   locale,
   onAdd,
   onUpdateQty,
@@ -363,7 +419,7 @@ function MenuItemRow({
 }: {
   item: MenuItem;
   quantity: number;
-  isPreparing: boolean;
+  ordered: OrderedLine | null;
   locale: CustomerLocale;
   onAdd: () => void;
   onUpdateQty: (delta: number) => void;
@@ -383,7 +439,7 @@ function MenuItemRow({
           onOpenDetail();
         }
       }}
-      className={`menu-item-card cursor-pointer ${quantity > 0 ? "menu-item-card--in-cart" : ""}`}
+      className={`menu-item-card cursor-pointer ${quantity > 0 || ordered ? "menu-item-card--in-cart" : ""}`}
     >
       <LazyMenuImage src={item.image_url} alt={name} className="menu-item-image" />
       <div className="min-w-0 flex-1">
@@ -409,10 +465,10 @@ function MenuItemRow({
             </span>
           ) : null}
         </div>
-        {isPreparing ? (
-          <p className="mt-1 text-xs font-semibold text-amber-700">
-            {copy.preparingMore}
-          </p>
+        {ordered ? (
+          <div className="mt-1 text-xs">
+            <OrderedBadge ordered={ordered} copy={copy} />
+          </div>
         ) : null}
         <p className="mt-2 text-sm font-bold text-cafe-800">{formatPrice(item.price)}</p>
       </div>
@@ -431,7 +487,7 @@ function MenuItemRow({
 function MenuSuggestionCard({
   item,
   quantity,
-  isPreparing,
+  ordered,
   locale,
   onAdd,
   onUpdateQty,
@@ -439,7 +495,7 @@ function MenuSuggestionCard({
 }: {
   item: MenuItem;
   quantity: number;
-  isPreparing: boolean;
+  ordered: OrderedLine | null;
   locale: CustomerLocale;
   onAdd: () => void;
   onUpdateQty: (delta: number) => void;
@@ -458,7 +514,7 @@ function MenuSuggestionCard({
           onOpenDetail();
         }
       }}
-      className={`menu-suggestion-card cursor-pointer ${quantity > 0 ? "menu-suggestion-card--in-cart" : ""}`}
+      className={`menu-suggestion-card cursor-pointer ${quantity > 0 || ordered ? "menu-suggestion-card--in-cart" : ""}`}
     >
       {item.image_url ? (
         <LazyMenuImage src={item.image_url} alt="" className="menu-suggestion-image" />
@@ -470,8 +526,10 @@ function MenuSuggestionCard({
       <p className="line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-tight text-cafe-900">
         {name}
       </p>
-      {isPreparing ? (
-        <p className="mt-0.5 text-[10px] font-semibold text-amber-700">{copy.preparingAdd}</p>
+      {ordered ? (
+        <div className="mt-0.5 text-[10px] leading-snug">
+          <OrderedBadge ordered={ordered} copy={copy} />
+        </div>
       ) : null}
       <div className="mt-2 flex items-center justify-between gap-1">
         <span className="text-xs font-bold text-cafe-700">{formatPrice(item.price)}</span>
@@ -500,7 +558,7 @@ function MenuCategorySection({
   title,
   items,
   cartQtyById,
-  preparingItemIds,
+  orderedByItemId,
   locale,
   onAdd,
   onUpdateQty,
@@ -510,7 +568,7 @@ function MenuCategorySection({
   title: string;
   items: MenuItem[];
   cartQtyById: Map<string, number>;
-  preparingItemIds: Set<string>;
+  orderedByItemId: Map<string, OrderedLine>;
   locale: CustomerLocale;
   onAdd: (item: MenuItem) => void;
   onUpdateQty: (menuItemId: string, delta: number) => void;
@@ -541,7 +599,7 @@ function MenuCategorySection({
             key={item.id}
             item={item}
             quantity={cartQtyById.get(item.id) ?? 0}
-            isPreparing={preparingItemIds.has(item.id)}
+            ordered={orderedByItemId.get(item.id) ?? null}
             locale={locale}
             onAdd={() => onAdd(item)}
             onUpdateQty={(delta) => onUpdateQty(item.id, delta)}
@@ -556,7 +614,7 @@ function MenuCategorySection({
 function ItemDetailSheet({
   item,
   quantity,
-  isPreparing,
+  ordered,
   copy,
   locale,
   onClose,
@@ -565,7 +623,7 @@ function ItemDetailSheet({
 }: {
   item: MenuItem;
   quantity: number;
-  isPreparing: boolean;
+  ordered: OrderedLine | null;
   copy: CustomerCopy;
   locale: CustomerLocale;
   onClose: () => void;
@@ -617,10 +675,10 @@ function ItemDetailSheet({
             <p className="mt-2 text-xs text-amber-800">{copy.allergens}: {displayMenuText(item.allergens, locale)}</p>
           ) : null}
 
-          {isPreparing ? (
-            <p className="mt-3 text-xs font-semibold text-amber-700">
-              {copy.kitchenPreparing}
-            </p>
+          {ordered ? (
+            <div className="mt-3 text-sm">
+              <OrderedBadge ordered={ordered} copy={copy} />
+            </div>
           ) : null}
 
           <label className="order-label mt-4">{copy.notes}</label>
@@ -1057,22 +1115,30 @@ export default function OrderClient({
     return map;
   }, [cart]);
 
-  const preparingItemIds = useMemo(() => {
-    const preparingNames = new Set<string>();
-    for (const order of activeOrders) {
-      if (order.status !== "preparing") continue;
-      for (const line of order.order_items) {
-        preparingNames.add(line.item_name);
-      }
-    }
-    const ids = new Set<string>();
+  const orderedByName = useMemo(() => mergeOrderedLines(activeOrders), [activeOrders]);
+
+  const orderedByItemId = useMemo(() => {
+    const map = new Map<string, OrderedLine>();
     for (const item of items) {
-      if (preparingNames.has(item.name)) {
-        ids.add(item.id);
-      }
+      const info = orderedByName.get(item.name.trim().toLowerCase());
+      if (info) map.set(item.id, info);
     }
-    return ids;
-  }, [activeOrders, items]);
+    return map;
+  }, [activeOrders, items, orderedByName]);
+
+  const orderedByOfferId = useMemo(() => {
+    const map = new Map<string, OrderedLine>();
+    for (const offer of offers) {
+      const info = orderedByName.get(offer.name.trim().toLowerCase());
+      if (info) map.set(offer.id, info);
+    }
+    return map;
+  }, [offers, orderedByName]);
+
+  const orderedMenuItems = useMemo(
+    () => items.filter((item) => orderedByItemId.has(item.id)),
+    [items, orderedByItemId]
+  );
 
   const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
@@ -1194,8 +1260,8 @@ export default function OrderClient({
     });
   }
 
-  function offerBlocked(offer: Offer) {
-    return offer.offer_items.some((oi) => preparingItemIds.has(oi.menu_item_id));
+  function offerOrdered(offer: Offer) {
+    return orderedByOfferId.get(offer.id) ?? null;
   }
 
   function updateQty(menuItemId: string, delta: number) {
@@ -1558,6 +1624,44 @@ export default function OrderClient({
         ) : null}
       </header>
 
+      {orderedMenuItems.length > 0 ? (
+        <section className="px-5 pt-4">
+          <h2 className="mb-2 text-sm font-bold text-cafe-900">{copy.yourTableOrder}</h2>
+          <ul className="space-y-2">
+            {orderedMenuItems.map((item) => {
+              const ordered = orderedByItemId.get(item.id);
+              if (!ordered) return null;
+              return (
+                <li
+                  key={item.id}
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-brand bg-brand-surface px-3 py-2"
+                >
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 text-left"
+                    onClick={() => openItemDetail(item)}
+                  >
+                    <p className="truncate text-sm font-semibold text-cafe-900">
+                      {displayItemName(item, locale)}
+                    </p>
+                    <div className="mt-0.5 text-xs">
+                      <OrderedBadge ordered={ordered} copy={copy} />
+                    </div>
+                  </button>
+                  <AddQtyControl
+                    name={displayItemName(item, locale)}
+                    quantity={cartQtyById.get(item.id) ?? 0}
+                    onAdd={() => addToCart(item)}
+                    onUpdateQty={(delta) => updateQty(item.id, delta)}
+                    size="sm"
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
+
       {hasVisibleOffers ? (
         <section className="px-5 py-4">
           <div className="mb-3 space-y-1">
@@ -1572,7 +1676,7 @@ export default function OrderClient({
                 key={offer.id}
                 offer={offer}
                 quantity={cartQtyByOfferId.get(offer.id) ?? 0}
-                isBlocked={offerBlocked(offer)}
+                ordered={offerOrdered(offer)}
                 onAdd={() => addOfferToCart(offer)}
                 onUpdateQty={(delta) => updateOfferQty(offer.id, delta)}
               />
@@ -1617,7 +1721,7 @@ export default function OrderClient({
                     key={item.id}
                     item={item}
                     quantity={cartQtyById.get(item.id) ?? 0}
-                    isPreparing={preparingItemIds.has(item.id)}
+                    ordered={orderedByItemId.get(item.id) ?? null}
                     locale={locale}
                     onAdd={() => addToCart(item)}
                     onUpdateQty={(delta) => updateQty(item.id, delta)}
@@ -1636,7 +1740,7 @@ export default function OrderClient({
                 title={section.title}
                 items={section.items}
                 cartQtyById={cartQtyById}
-                preparingItemIds={preparingItemIds}
+                orderedByItemId={orderedByItemId}
                 locale={locale}
                 onAdd={addToCart}
                 onUpdateQty={updateQty}
@@ -1651,7 +1755,7 @@ export default function OrderClient({
         <ItemDetailSheet
           item={detailItem}
           quantity={cartQtyById.get(detailItem.id) ?? 0}
-          isPreparing={preparingItemIds.has(detailItem.id)}
+          ordered={orderedByItemId.get(detailItem.id) ?? null}
           copy={copy}
           locale={locale}
           onClose={() => setDetailItem(null)}
