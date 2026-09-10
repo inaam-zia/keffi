@@ -30,6 +30,7 @@ const allLinks = [
   { href: "/admin/tables", label: "Table QR" },
   { href: "/admin/branding", label: "Appearance" },
   { href: "/admin/payment", label: "Payment QR" },
+  { href: "/admin/gst", label: "GST" },
   { href: "/admin/history", label: "History" },
   { href: "/admin/settings", label: "Settings" },
 ];

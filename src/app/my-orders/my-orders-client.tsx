@@ -13,7 +13,8 @@ import { displayMenuText, displaySpiceLabel } from "@/lib/customer-copy";
 import { formatDate, formatPrice } from "@/lib/format";
 import { isValidEmail, normalizeEmail } from "@/lib/email";
 import { normalizePhone } from "@/lib/phone";
-import { getOrderGrandTotal } from "@/lib/receipt";
+import { getOrderBillTotals } from "@/lib/receipt";
+import BillGstLines from "@/components/bill-gst-lines";
 import { saveReorderLines } from "@/lib/reorder";
 import type { CustomerIdentity } from "@/lib/auth";
 import type { OrderWithItems } from "@/lib/types";
@@ -47,11 +48,12 @@ function OrderCard({
     served: copy.served,
     cancelled: copy.cancelled,
   };
-  const total = getOrderGrandTotal(order, {
+  const bill = getOrderBillTotals(order, {
     gstEnabled: branding.gstEnabled,
     cgstPercent: branding.cgstPercent,
     sgstPercent: branding.sgstPercent,
   });
+  const total = bill.grandTotal;
   return (
     <div className="rounded-2xl border border-cafe-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -85,6 +87,17 @@ function OrderCard({
           </li>
         ))}
       </ul>
+      {bill.applyGst ? (
+        <div className="mt-2 space-y-0.5 border-t border-cafe-100 pt-2 text-xs text-cafe-500">
+          {branding.gstin ? <p>GSTIN: {branding.gstin}</p> : null}
+          <BillGstLines
+            bill={bill}
+            formatAmount={formatPrice}
+            lineClassName="flex justify-between gap-3"
+            totalClassName="flex justify-between gap-3 font-semibold text-cafe-800"
+          />
+        </div>
+      ) : null}
       <button
         type="button"
         className="mt-3 text-sm font-semibold text-[var(--brand-primary)] underline-offset-2 hover:underline"

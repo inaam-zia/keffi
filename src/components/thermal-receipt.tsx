@@ -7,8 +7,8 @@ import {
   formatReceiptDate,
   formatReceiptGrandTotal,
   formatReceiptTime,
-  formatTaxLineLabel,
   getBillNumber,
+  getGstDisplayLines,
 } from "@/lib/receipt";
 import type { OrderItem, OrderWithItems } from "@/lib/types";
 import UpiPayPanel from "@/components/upi-pay-panel";
@@ -153,22 +153,19 @@ export default function ThermalReceipt({
 
         {bill.applyGst ? (
           <div className="thermal-receipt__tax-lines">
-            {bill.cgstPercent > 0 ? (
-              <div className="thermal-receipt__gst-line">
-                <span>
-                  {formatTaxLineLabel("CGST", bill.cgstPercent, bill.subTotal)}
-                </span>
-                <span>{formatReceiptAmount(bill.cgstAmount)}</span>
+            {getGstDisplayLines(bill).map((line) => (
+              <div
+                key={line.key}
+                className={
+                  line.emphasize
+                    ? "thermal-receipt__gst-line thermal-receipt__gst-line--total"
+                    : "thermal-receipt__gst-line"
+                }
+              >
+                <span>{line.label}</span>
+                <span>{formatReceiptAmount(line.amount)}</span>
               </div>
-            ) : null}
-            {bill.sgstPercent > 0 ? (
-              <div className="thermal-receipt__gst-line">
-                <span>
-                  {formatTaxLineLabel("SGST", bill.sgstPercent, bill.subTotal)}
-                </span>
-                <span>{formatReceiptAmount(bill.sgstAmount)}</span>
-              </div>
-            ) : null}
+            ))}
           </div>
         ) : null}
       </div>

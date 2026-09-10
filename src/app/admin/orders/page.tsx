@@ -8,11 +8,11 @@ import { formatDateShort, formatPrice } from "@/lib/format";
 import { fetchJsonArray } from "@/lib/parse-api";
 import {
   consolidateOrdersForBill,
-  formatTaxLineLabel,
   getOrderBillTotals,
   getOrderGrandTotal,
   type BillTotals,
 } from "@/lib/receipt";
+import BillGstLines from "@/components/bill-gst-lines";
 import type { OrderStatus, OrderWithItems } from "@/lib/types";
 import TableHeading from "@/components/table-heading";
 import AdminTableMap from "@/components/admin-table-map";
@@ -81,6 +81,7 @@ export default function LiveOrdersPage() {
   const [success, setSuccess] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [closingTable, setClosingTable] = useState<number | null>(null);
+  const [closingBulk, setClosingBulk] = useState(false);
   const [clearedTables, setClearedTables] = useState<number[]>([]);
   const [lowStock, setLowStock] = useState<
     { id: string; name: string; quantity: number; unit: string }[]
@@ -93,6 +94,7 @@ export default function LiveOrdersPage() {
   const [floorLoading, setFloorLoading] = useState(true);
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
   const [expandedPayable, setExpandedPayable] = useState<number | null>(null);
+  const [selectedBills, setSelectedBills] = useState<number[]>([]);
 
   const gst = useMemo(
     () => ({
@@ -296,6 +298,26 @@ export default function LiveOrdersPage() {
         state: "free" as const,
       };
 
+  const selectedPayable = useMemo(
+    () => visiblePayable.filter((table) => selectedBills.includes(table.tableNumber)),
+    [visiblePayable, selectedBills]
+  );
+  const selectedPayableTotal = selectedPayable.reduce(
+    (sum, table) => sum + table.totals.grandTotal,
+    0
+  );
+  const allVisibleSelected =
+    visiblePayable.length > 0 && selectedPayable.length === visiblePayable.length;
+  const billsBusy = closingBulk || closingTable != null;
+
+  useEffect(() => {
+    const allowed = new Set(visiblePayable.map((table) => table.tableNumber));
+    setSelectedBills((prev) => {
+      const next = prev.filter((n) => allowed.has(n));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [visiblePayable]);
+
   function selectTable(tableNumber: number | null) {
     setSelectedTable(tableNumber);
     if (tableNumber != null) {
@@ -325,43 +347,70 @@ export default function LiveOrdersPage() {
     }
   }
 
-  async function closeTable(
-    tableNumber: number,
-    tableLabel?: string | null,
+  async function closeTables(
+    tables: { tableNumber: number; tableLabel?: string | null }[],
     paymentMethod?: string
   ) {
-    const title = tableLabel?.trim() || `Table ${tableNumber}`;
-    if (
-      !confirm(
-        `Mark “${title}” paid & clear?\n\nPrevious guests will be locked out. They must scan the table QR again. Use this after payment when the party leaves.`
-      )
-    ) {
-      return;
-    }
+    if (!tables.length) return;
+    const titles = tables.map(
+      (table) => table.tableLabel?.trim() || `Table ${table.tableNumber}`
+    );
+    const confirmText =
+      tables.length === 1
+        ? `Mark “${titles[0]}” paid & clear?\n\nPrevious guests will be locked out. They must scan the table QR again. Use this after payment when the party leaves.`
+        : `Mark ${tables.length} bills paid & clear?\n\n${titles.join(", ")}\n\nPrevious guests will be locked out. They must scan the table QR again.`;
+    if (!confirm(confirmText)) return;
 
-    setClosingTable(tableNumber);
+    const numbers = tables.map((table) => table.tableNumber);
+    if (tables.length === 1) setClosingTable(numbers[0]);
+    else setClosingBulk(true);
     setError("");
     setSuccess("");
     try {
       const res = await fetch("/api/tables/close-by-number", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tableNumber, paymentMethod }),
+        body: JSON.stringify({ tableNumbers: numbers, paymentMethod }),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "Could not close table");
         return;
       }
-      setSuccess(data.message || `${title} marked clear — ready for next guests.`);
-      setClearedTables((prev) =>
-        prev.includes(tableNumber) ? prev : [...prev, tableNumber]
-      );
+      const closed = Array.isArray(data.closed) ? (data.closed as number[]) : numbers;
+      setSuccess(data.message || `${closed.length} table${closed.length === 1 ? "" : "s"} cleared.`);
+      setClearedTables((prev) => Array.from(new Set([...prev, ...closed])));
+      setSelectedBills((prev) => prev.filter((n) => !closed.includes(n)));
       await loadOrders();
       await loadFloor();
     } finally {
       setClosingTable(null);
+      setClosingBulk(false);
     }
+  }
+
+  function closeTable(
+    tableNumber: number,
+    tableLabel?: string | null,
+    paymentMethod?: string
+  ) {
+    return closeTables([{ tableNumber, tableLabel }], paymentMethod);
+  }
+
+  function toggleBill(tableNumber: number) {
+    setSelectedBills((prev) =>
+      prev.includes(tableNumber)
+        ? prev.filter((n) => n !== tableNumber)
+        : [...prev, tableNumber]
+    );
+  }
+
+  function toggleAllVisibleBills() {
+    if (allVisibleSelected) {
+      setSelectedBills([]);
+      return;
+    }
+    setSelectedBills(visiblePayable.map((table) => table.tableNumber));
   }
 
   return (
@@ -479,34 +528,88 @@ export default function LiveOrdersPage() {
 
       {visiblePayable.length > 0 && (
         <div className="card space-y-3 border border-green-200 bg-green-50/40">
-          <div>
-            <h3 className="text-sm font-bold uppercase tracking-wider text-green-800">
-              Served — mark paid &amp; clear
-            </h3>
-            <p className="text-sm text-cafe-600">
-              Food is done. After you confirm UPI/cash, clear the table so the next party can
-              scan fresh.
-            </p>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-green-800">
+                Served — mark paid &amp; clear
+              </h3>
+              <p className="text-sm text-cafe-600">
+                Food is done. After you confirm UPI/cash, clear the table so the next party can
+                scan fresh. Select several bills to clear them together.
+              </p>
+            </div>
+            {visiblePayable.length > 1 ? (
+              <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-green-900">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-[var(--brand-primary)]"
+                  checked={allVisibleSelected}
+                  onChange={toggleAllVisibleBills}
+                />
+                Select all
+              </label>
+            ) : null}
           </div>
+          {selectedPayable.length > 0 ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-green-300 bg-white px-3 py-2">
+              <p className="text-sm font-semibold text-green-900">
+                {selectedPayable.length} selected · {formatPrice(selectedPayableTotal)}
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {(["upi", "cash", "card"] as const).map((method) => (
+                  <button
+                    key={method}
+                    type="button"
+                    onClick={() =>
+                      closeTables(
+                        selectedPayable.map((table) => ({
+                          tableNumber: table.tableNumber,
+                          tableLabel: table.tableLabel,
+                        })),
+                        method
+                      )
+                    }
+                    disabled={billsBusy}
+                    className="btn-primary text-xs capitalize disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {closingBulk ? "Clearing…" : `Clear ${method}`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className="space-y-2">
             {visiblePayable.map((table) => {
               const expanded = expandedPayable === table.tableNumber;
+              const checked = selectedBills.includes(table.tableNumber);
+              const rowBusy = billsBusy && (closingBulk || closingTable === table.tableNumber);
               return (
                 <div
                   key={table.tableNumber}
-                  className="rounded-xl border border-green-200 bg-white px-3 py-2.5"
+                  className={`rounded-xl border bg-white px-3 py-2.5 ${
+                    checked ? "border-[var(--brand-primary)]" : "border-green-200"
+                  }`}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <TableHeading
-                        tableNumber={table.tableNumber}
-                        tableName={table.tableLabel}
-                        size="md"
+                    <label className="flex min-w-0 cursor-pointer items-start gap-2">
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-4 w-4 shrink-0 accent-[var(--brand-primary)]"
+                        checked={checked}
+                        onChange={() => toggleBill(table.tableNumber)}
+                        aria-label={`Select ${table.tableLabel?.trim() || `Table ${table.tableNumber}`}`}
                       />
-                      <p className="text-xs text-cafe-500">
-                        {table.guests} · To pay {formatPrice(table.totals.grandTotal)}
-                      </p>
-                    </div>
+                      <span>
+                        <TableHeading
+                          tableNumber={table.tableNumber}
+                          tableName={table.tableLabel}
+                          size="md"
+                        />
+                        <span className="mt-0.5 block text-xs text-cafe-500">
+                          {table.guests} · To pay {formatPrice(table.totals.grandTotal)}
+                        </span>
+                      </span>
+                    </label>
                     <div className="flex flex-wrap gap-1">
                       {(["upi", "cash", "card"] as const).map((method) => (
                         <button
@@ -515,10 +618,10 @@ export default function LiveOrdersPage() {
                           onClick={() =>
                             closeTable(table.tableNumber, table.tableLabel, method)
                           }
-                          disabled={closingTable === table.tableNumber}
+                          disabled={billsBusy}
                           className="btn-primary text-xs capitalize disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          {closingTable === table.tableNumber ? "Clearing…" : method}
+                          {rowBusy ? "Clearing…" : method}
                         </button>
                       ))}
                     </div>
@@ -569,26 +672,18 @@ export default function LiveOrdersPage() {
                         ) : null}
                         {table.totals.applyGst ? (
                           <>
-                            <div className="flex justify-between">
-                              <dt>
-                                {formatTaxLineLabel(
-                                  "CGST",
-                                  table.totals.cgstPercent,
-                                  table.totals.subTotal
-                                )}
-                              </dt>
-                              <dd>{formatPrice(table.totals.cgstAmount)}</dd>
-                            </div>
-                            <div className="flex justify-between">
-                              <dt>
-                                {formatTaxLineLabel(
-                                  "SGST",
-                                  table.totals.sgstPercent,
-                                  table.totals.subTotal
-                                )}
-                              </dt>
-                              <dd>{formatPrice(table.totals.sgstAmount)}</dd>
-                            </div>
+                            {branding.gstin ? (
+                              <div className="flex justify-between text-cafe-500">
+                                <dt>GSTIN</dt>
+                                <dd className="font-mono">{branding.gstin}</dd>
+                              </div>
+                            ) : null}
+                            <BillGstLines
+                              bill={table.totals}
+                              formatAmount={formatPrice}
+                              lineClassName="flex justify-between"
+                              totalClassName="flex justify-between font-semibold text-cafe-800"
+                            />
                           </>
                         ) : null}
                         <div className="flex justify-between pt-1 text-sm font-bold text-cafe-900">

@@ -13,7 +13,8 @@ import {
 import { formatDate, formatPrice } from "@/lib/format";
 import { fetchJsonArray } from "@/lib/parse-api";
 import { printThermalBill } from "@/lib/print-bill";
-import { formatTaxLineLabel, getOrderBillTotals } from "@/lib/receipt";
+import { getOrderBillTotals } from "@/lib/receipt";
+import BillGstLines from "@/components/bill-gst-lines";
 import type { CafeBranding } from "@/lib/branding-types";
 import { getDefaultBranding } from "@/lib/branding-types";
 import type { OrderWithItems } from "@/lib/types";
@@ -454,21 +455,13 @@ export default function HistoryPage() {
                         <span>{formatPrice(bill.subTotal)}</span>
                       </span>
                     </div>
-                    {bill.applyGst && bill.cgstPercent > 0 ? (
-                      <div className="mt-1 flex justify-between gap-3 text-[11px] leading-snug text-cafe-500">
-                        <span>
-                          {formatTaxLineLabel("CGST", bill.cgstPercent, bill.subTotal)}
-                        </span>
-                        <span>{formatPrice(bill.cgstAmount)}</span>
-                      </div>
-                    ) : null}
-                    {bill.applyGst && bill.sgstPercent > 0 ? (
-                      <div className="mt-0.5 flex justify-between gap-3 text-[11px] leading-snug text-cafe-500">
-                        <span>
-                          {formatTaxLineLabel("SGST", bill.sgstPercent, bill.subTotal)}
-                        </span>
-                        <span>{formatPrice(bill.sgstAmount)}</span>
-                      </div>
+                    {bill.applyGst ? (
+                      <BillGstLines
+                        bill={bill}
+                        formatAmount={formatPrice}
+                        lineClassName="mt-1 flex justify-between gap-3 text-[11px] leading-snug text-cafe-500"
+                        totalClassName="mt-1 flex justify-between gap-3 text-[11px] font-semibold leading-snug text-cafe-800"
+                      />
                     ) : null}
                   </li>
                   <li className="flex justify-between border-b-2 border-cafe-900 py-2 font-bold text-cafe-900">

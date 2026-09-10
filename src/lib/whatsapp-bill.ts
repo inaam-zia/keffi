@@ -1,11 +1,20 @@
 import { formatPrice } from "@/lib/format";
+import {
+  getGstDisplayLines,
+  getOrderBillTotals,
+  type GstBillOptions,
+} from "@/lib/receipt";
 import type { OrderWithItems } from "@/lib/types";
 
 export function buildWhatsAppBillText(
   order: OrderWithItems,
   cafeName: string,
-  grandTotal: number
+  gst?: GstBillOptions
 ): string {
+  const bill = getOrderBillTotals(order, gst);
+  const taxLines = getGstDisplayLines(bill).map(
+    (line) => `${line.label}: ${formatPrice(line.amount)}`
+  );
   const lines = [
     `${cafeName}`,
     `Bill · Table ${order.table_number}`,
@@ -16,7 +25,9 @@ export function buildWhatsAppBillText(
       return `${item.quantity}× ${item.item_name}${spice}${note} — ${formatPrice(item.item_price * item.quantity)}`;
     }),
     "",
-    `Total: ${formatPrice(grandTotal)}`,
+    `Subtotal: ${formatPrice(bill.subTotal)}`,
+    ...taxLines,
+    `Total: ${formatPrice(bill.grandTotal)}`,
   ];
   return lines.join("\n");
 }

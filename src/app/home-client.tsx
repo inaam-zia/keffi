@@ -24,9 +24,6 @@ export default function HomeClient({ branding }: { branding: CafeBranding }) {
           <Link href="/reserve" className="btn-secondary w-full">
             {copy.reserve}
           </Link>
-          <Link href="/my-orders" className="btn-secondary w-full">
-            {copy.myOrders}
-          </Link>
         </div>
       </div>
       <DeveloperCredit className="shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2" />

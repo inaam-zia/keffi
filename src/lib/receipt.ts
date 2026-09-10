@@ -38,9 +38,11 @@ export type BillTotals = {
   subTotal: number;
   cgstPercent: number;
   sgstPercent: number;
+  /** Combined tax rate (CGST % + SGST %) */
+  gstPercent: number;
   cgstAmount: number;
   sgstAmount: number;
-  /** Combined tax amount */
+  /** Combined tax amount (CGST + SGST) */
   gstAmount: number;
   grandTotal: number;
   applyGst: boolean;
@@ -55,8 +57,10 @@ function taxOn(subTotal: number, percent: number): number {
   return roundMoney((subTotal * percent) / 100);
 }
 
-function formatPercentLabel(percent: number): string {
-  return percent % 1 === 0 ? String(percent) : percent.toFixed(2);
+export function formatPercentLabel(percent: number): string {
+  if (!Number.isFinite(percent)) return "0";
+  const rounded = Math.round(percent * 100) / 100;
+  return String(rounded);
 }
 
 /** e.g. "CGST 2.5% on 198.00" */
@@ -66,6 +70,41 @@ export function formatTaxLineLabel(
   subTotal: number
 ): string {
   return `${kind} ${formatPercentLabel(percent)}% on ${subTotal.toFixed(2)}`;
+}
+
+/** Combined GST line: percent sum and (CGST% + SGST%). */
+export function formatCombinedGstLabel(bill: BillTotals): string {
+  return `GST ${formatPercentLabel(bill.gstPercent)}% (${formatPercentLabel(bill.cgstPercent)}% + ${formatPercentLabel(bill.sgstPercent)}%)`;
+}
+
+export type GstDisplayLine = {
+  key: "cgst" | "sgst" | "gst";
+  label: string;
+  amount: number;
+  emphasize?: boolean;
+};
+
+/** CGST, SGST, then combined GST — used on every bill. */
+export function getGstDisplayLines(bill: BillTotals): GstDisplayLine[] {
+  if (!bill.applyGst) return [];
+  return [
+    {
+      key: "cgst",
+      label: formatTaxLineLabel("CGST", bill.cgstPercent, bill.subTotal),
+      amount: bill.cgstAmount,
+    },
+    {
+      key: "sgst",
+      label: formatTaxLineLabel("SGST", bill.sgstPercent, bill.subTotal),
+      amount: bill.sgstAmount,
+    },
+    {
+      key: "gst",
+      label: formatCombinedGstLabel(bill),
+      amount: bill.gstAmount,
+      emphasize: true,
+    },
+  ];
 }
 
 export type GstBillOptions = {
@@ -157,12 +196,14 @@ export function calculateBillTotals(
   const cgstAmount = applyGst ? taxOn(base, cgstPercent) : 0;
   const sgstAmount = applyGst ? taxOn(base, sgstPercent) : 0;
   const gstAmount = roundMoney(cgstAmount + sgstAmount);
+  const gstPercent = applyGst ? roundMoney(cgstPercent + sgstPercent) : 0;
   const grandTotal = roundMoney(base + gstAmount);
 
   return {
     subTotal: base,
     cgstPercent: applyGst ? cgstPercent : 0,
     sgstPercent: applyGst ? sgstPercent : 0,
+    gstPercent,
     cgstAmount,
     sgstAmount,
     gstAmount,

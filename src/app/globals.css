@@ -822,6 +822,10 @@
     @apply mt-0.5 flex items-center justify-between gap-2 text-[9px] leading-tight text-black;
   }
 
+  .thermal-receipt__gst-line--total {
+    @apply mt-1 font-bold;
+  }
+
   .thermal-receipt__rule {
     @apply my-2 block w-full border-0 border-t border-dashed border-neutral-400;
   }

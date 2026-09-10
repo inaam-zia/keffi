@@ -162,6 +162,10 @@ export function printThermalBill(receiptEl: HTMLElement | null, title = "Bill") 
       font-weight: 400;
       line-height: 1.2;
     }
+    .thermal-receipt__gst-line--total {
+      margin-top: 0.8mm;
+      font-weight: 700;
+    }
     .thermal-receipt__gst-line > span:first-child,
     .thermal-receipt__subtotal > span:first-child,
     .thermal-receipt__grand-total > span:first-child {

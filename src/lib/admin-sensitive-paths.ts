@@ -11,6 +11,7 @@ export const OPEN_ADMIN_PATHS = [
   "/admin/tables",
   "/admin/branding",
   "/admin/payment",
+  "/admin/gst",
   "/admin/history",
   "/admin/settings",
 ] as const;

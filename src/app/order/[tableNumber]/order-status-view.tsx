@@ -456,7 +456,7 @@ export default function OrderStatusView({
   const whatsappHref = billOrder
     ? whatsappBillUrl(
         billOrder.customer_phone || "",
-        buildWhatsAppBillText(billOrder, branding.appName, grandTotal)
+        buildWhatsAppBillText(billOrder, branding.appName, gst)
       )
     : "";
 

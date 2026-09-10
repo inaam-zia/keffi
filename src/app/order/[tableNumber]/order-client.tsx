@@ -34,6 +34,8 @@ import DietToggle, {
 import { couponDiscount } from "@/lib/coupons";
 import { maxRedeemablePoints, rupeesFromPoints } from "@/lib/loyalty";
 import { takeReorderLines } from "@/lib/reorder";
+import { calculateBillTotals } from "@/lib/receipt";
+import BillGstLines from "@/components/bill-gst-lines";
 import type { CafeBranding } from "@/lib/branding-types";
 import type { CartItem, Coupon, MenuCategory, MenuItem, Offer, OrderType, OrderWithItems } from "@/lib/types";
 
@@ -699,6 +701,12 @@ export default function OrderClient({
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
   const [loyaltyRedeem, setLoyaltyRedeem] = useState(0);
   const [orderType, setOrderType] = useState<OrderType>("dine_in");
+  const [gst, setGst] = useState({
+    gstEnabled: branding.gstEnabled,
+    gstin: branding.gstin,
+    cgstPercent: branding.cgstPercent,
+    sgstPercent: branding.sgstPercent,
+  });
   const scrollMenuToTopRef = useRef(false);
   const chipRailRef = useRef<HTMLDivElement>(null);
   const skipObserverRef = useRef(false);
@@ -811,6 +819,21 @@ export default function OrderClient({
     void loadOps();
     const interval = setInterval(loadOps, 15000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/branding", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return;
+        setGst({
+          gstEnabled: Boolean(data.gstEnabled),
+          gstin: data.gstin ?? null,
+          cgstPercent: Number(data.cgstPercent) || 0,
+          sgstPercent: Number(data.sgstPercent) || 0,
+        });
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -1034,7 +1057,13 @@ export default function OrderClient({
   const couponOff = appliedCoupon ? couponDiscount(appliedCoupon, cartTotal) : 0;
   const maxLoyalty = maxRedeemablePoints(loyaltyPoints, Math.max(0, cartTotal - couponOff));
   const loyaltyOff = rupeesFromPoints(Math.min(loyaltyRedeem, maxLoyalty));
-  const payableTotal = Math.max(0, Math.round((cartTotal - couponOff - loyaltyOff) * 100) / 100);
+  const cartSubTotal = Math.max(0, Math.round((cartTotal - couponOff - loyaltyOff) * 100) / 100);
+  const cartBill = calculateBillTotals(cartSubTotal, {
+    gstEnabled: gst.gstEnabled,
+    cgstPercent: gst.cgstPercent,
+    sgstPercent: gst.sgstPercent,
+  });
+  const payableTotal = cartBill.grandTotal;
 
   useEffect(() => {
     if (!visibleSections.length) {
@@ -1801,6 +1830,19 @@ export default function OrderClient({
                   <div className="flex items-center justify-between text-sm text-green-800">
                     <span>{copy.loyalty}</span>
                     <span>−{formatPrice(loyaltyOff)}</span>
+                  </div>
+                ) : null}
+                {cartBill.applyGst ? (
+                  <div className="space-y-0.5 text-sm text-cafe-600">
+                    {gst.gstin ? (
+                      <p className="text-xs text-cafe-500">GSTIN: {gst.gstin}</p>
+                    ) : null}
+                    <BillGstLines
+                      bill={cartBill}
+                      formatAmount={formatPrice}
+                      lineClassName="flex items-center justify-between gap-3 text-xs"
+                      totalClassName="flex items-center justify-between gap-3 text-sm font-semibold text-cafe-800"
+                    />
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between text-sm">

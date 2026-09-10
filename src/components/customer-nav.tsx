@@ -27,7 +27,6 @@ export default function CustomerNav({
   const links = [
     { href: "/", label: copy.navHome },
     { href: "/reserve", label: copy.navReserve },
-    { href: "/my-orders", label: copy.navMyOrders },
   ];
 
   return (
