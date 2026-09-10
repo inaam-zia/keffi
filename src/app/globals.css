@@ -127,6 +127,22 @@
     background-color: var(--brand-header-bg);
   }
 
+  .others-ordering {
+    @apply rounded-xl px-3 py-2 text-left;
+    background-color: color-mix(in srgb, var(--brand-bg-top) 70%, transparent);
+    border: 1px solid color-mix(in srgb, var(--brand-border) 70%, transparent);
+  }
+
+  .others-ordering__label {
+    @apply mr-2 text-[10px] font-bold uppercase tracking-wide;
+    color: var(--brand-subtle);
+  }
+
+  .others-ordering__items {
+    @apply text-xs leading-snug;
+    color: var(--brand-muted);
+  }
+
   .order-footer {
     @apply border-t backdrop-blur-md;
     border-color: color-mix(in srgb, var(--brand-border) 80%, transparent);
