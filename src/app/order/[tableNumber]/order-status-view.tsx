@@ -300,6 +300,7 @@ type Props = {
   customerName: string;
   branding: CafeBranding;
   onAddMore: () => void;
+  onHome: () => void;
 };
 
 export default function OrderStatusView({
@@ -308,6 +309,7 @@ export default function OrderStatusView({
   customerName,
   branding,
   onAddMore,
+  onHome,
 }: Props) {
   const { copy, locale } = useCustomerLocale();
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
@@ -324,7 +326,6 @@ export default function OrderStatusView({
   const [waitMinutes, setWaitMinutes] = useState(5);
   const [wifiSsid, setWifiSsid] = useState(branding.wifiSsid);
   const [wifiPassword, setWifiPassword] = useState(branding.wifiPassword);
-  const [splitCount, setSplitCount] = useState(2);
 
   const loadPaymentQr = useCallback(async () => {
     const res = await fetch(`/api/payment-qr?_=${Date.now()}`, { cache: "no-store" });
@@ -450,9 +451,6 @@ export default function OrderStatusView({
           order_items: orders.flatMap((o) => o.order_items),
         }
       : null);
-  const grandTotal = billOrder ? getOrderGrandTotal(billOrder, gst) : 0;
-  const splits = Math.max(2, Math.min(12, Math.floor(splitCount) || 2));
-  const eachPays = Math.round((grandTotal / splits) * 100) / 100;
   const whatsappHref = billOrder
     ? whatsappBillUrl(
         billOrder.customer_phone || "",
@@ -470,7 +468,11 @@ export default function OrderStatusView({
     <main className="order-bg mx-auto min-h-screen max-w-lg px-5 py-8">
       <div className="mb-6">
         <CafeBrandingBlock branding={branding} logoSize="md" showTagline align="center" />
-        <CustomerNav className="mt-4 justify-center" />
+        <CustomerNav
+          className="mt-4 justify-center"
+          homeHref={`/order/${tableNumber}`}
+          onHomeClick={onHome}
+        />
       </div>
 
       <div className="order-hero-card space-y-6">
@@ -600,34 +602,15 @@ export default function OrderStatusView({
           </p>
         ) : null}
 
-        {orders.length > 0 && !allCancelled && grandTotal > 0 ? (
-          <div className="rounded-2xl border border-brand bg-brand-surface p-4">
-            <p className="text-sm font-semibold text-brand-heading">{copy.splitBill}</p>
-            <label className="mt-2 flex items-center justify-between gap-3 text-sm text-brand-muted">
-              <span>{copy.splitBetween}</span>
-              <input
-                type="number"
-                min={2}
-                max={12}
-                className="order-input w-20 py-1 text-right"
-                value={splits}
-                onChange={(e) => setSplitCount(Number(e.target.value) || 2)}
-              />
-            </label>
-            <p className="mt-2 text-sm font-bold text-brand-heading">
-              {copy.eachPays}: {formatPrice(eachPays)}
-            </p>
-            {whatsappHref ? (
-              <a
-                href={whatsappHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="order-btn mt-3 block w-full text-center"
-              >
-                {copy.sendWhatsApp}
-              </a>
-            ) : null}
-          </div>
+        {orders.length > 0 && !allCancelled && whatsappHref ? (
+          <a
+            href={whatsappHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="order-btn block w-full text-center"
+          >
+            {copy.sendWhatsApp}
+          </a>
         ) : null}
 
         <button type="button" onClick={onAddMore} className="order-btn w-full">

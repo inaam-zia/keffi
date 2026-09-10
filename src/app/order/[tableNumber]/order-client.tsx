@@ -36,6 +36,13 @@ import { maxRedeemablePoints, rupeesFromPoints } from "@/lib/loyalty";
 import { takeReorderLines } from "@/lib/reorder";
 import { calculateBillTotals } from "@/lib/receipt";
 import BillGstLines from "@/components/bill-gst-lines";
+import {
+  rememberLastTable,
+  readMenuCategory,
+  readMenuSearch,
+  writeMenuCategory,
+  writeMenuSearch,
+} from "@/lib/customer-menu-session";
 import type { CafeBranding } from "@/lib/branding-types";
 import type { CartItem, Coupon, MenuCategory, MenuItem, Offer, OrderType, OrderWithItems } from "@/lib/types";
 
@@ -710,11 +717,28 @@ export default function OrderClient({
   const chipRailRef = useRef<HTMLDivElement>(null);
   const skipObserverRef = useRef(false);
 
+  const [menuFiltersReady, setMenuFiltersReady] = useState(false);
+
   const hasSavedDetails = Boolean(customerName.trim() && normalizePhone(customerPhone));
 
   useEffect(() => {
+    rememberLastTable(tableNumber);
     setDietFilter(readDietFilter());
-  }, []);
+    setSearchQuery(readMenuSearch());
+    const savedCategory = readMenuCategory();
+    if (savedCategory) setActiveCategoryKey(savedCategory);
+    setMenuFiltersReady(true);
+  }, [tableNumber]);
+
+  useEffect(() => {
+    if (!menuFiltersReady) return;
+    writeMenuSearch(searchQuery);
+  }, [searchQuery, menuFiltersReady]);
+
+  useEffect(() => {
+    if (!menuFiltersReady) return;
+    writeMenuCategory(activeCategoryKey);
+  }, [activeCategoryKey, menuFiltersReady]);
 
   function changeDietFilter(next: DietFilter) {
     setDietFilter(next);
@@ -1304,21 +1328,25 @@ export default function OrderClient({
     await placeOrder();
   }
 
-  function orderAgain() {
+  function goToMenu() {
     scrollMenuToTopRef.current = true;
     setStep("menu");
-    setSearchQuery("");
+    setError("");
+    setCheckoutError("");
+    setShowCheckout(false);
+    setShowCart(false);
+    setDetailItem(null);
+    setOrderPlacedSuccess(false);
+  }
+
+  function orderAgain() {
+    goToMenu();
     setCart([]);
     try {
       sessionStorage.removeItem(cartStorageKey(tableNumber));
     } catch {
       /* ignore */
     }
-    setError("");
-    setCheckoutError("");
-    setShowCheckout(false);
-    setShowCart(false);
-    setDetailItem(null);
   }
 
   function viewOrderStatus() {
@@ -1373,6 +1401,7 @@ export default function OrderClient({
         customerName={customerName}
         branding={branding}
         onAddMore={orderAgain}
+        onHome={goToMenu}
       />
     );
   }
@@ -1397,7 +1426,11 @@ export default function OrderClient({
           ) : null}
         </div>
 
-        <CustomerNav className="mt-3" />
+        <CustomerNav
+          className="mt-3"
+          homeHref={`/order/${tableNumber}`}
+          onHomeClick={goToMenu}
+        />
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className="text-[11px] text-brand-muted">
             {copy.waitTime} {waitMinutes} {copy.minutes}
