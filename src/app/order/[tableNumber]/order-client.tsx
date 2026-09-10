@@ -2,7 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatPrice } from "@/lib/format";
-import { fetchMyActiveOrders, ORDER_STATUS_POLL_MS } from "@/lib/order-poll";
+import {
+  fetchMyActiveOrders,
+  fetchOthersOrdering,
+  ORDER_STATUS_POLL_MS,
+  OTHERS_ORDERING_POLL_MS,
+} from "@/lib/order-poll";
 import { normalizePhone, isValidPhone } from "@/lib/phone";
 import CafeBrandingBlock from "@/components/cafe-branding-block";
 import DeveloperCredit from "@/components/developer-credit";
@@ -573,6 +578,7 @@ export default function OrderClient({
   const [showCheckout, setShowCheckout] = useState(false);
   const [hasActiveOrders, setHasActiveOrders] = useState(false);
   const [activeOrders, setActiveOrders] = useState<OrderWithItems[]>([]);
+  const [othersOrdering, setOthersOrdering] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<MenuItem[]>([]);
   const [offers, setOffers] = useState<Offer[]>(initialOffers);
@@ -668,6 +674,29 @@ export default function OrderClient({
 
     const interval = setInterval(tick, ORDER_STATUS_POLL_MS);
     return () => clearInterval(interval);
+  }, [tableNumber, step]);
+
+  useEffect(() => {
+    if (step !== "menu") return;
+
+    async function refreshOthers() {
+      const items = await fetchOthersOrdering(tableNumber);
+      setOthersOrdering(items);
+    }
+
+    void refreshOthers();
+
+    function tick() {
+      if (document.visibilityState === "hidden") return;
+      void refreshOthers();
+    }
+
+    const interval = setInterval(tick, OTHERS_ORDERING_POLL_MS);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", tick);
+    };
   }, [tableNumber, step]);
 
   useEffect(() => {
@@ -1095,6 +1124,15 @@ export default function OrderClient({
             <p className="text-xs text-brand-subtle">Tap ADD to build your order</p>
           )}
         </div>
+
+        {othersOrdering.length > 0 ? (
+          <p className="others-ordering mt-3" aria-live="polite">
+            <span className="others-ordering__label">Others are ordering</span>
+            <span className="others-ordering__items">
+              {othersOrdering.join(" · ")}
+            </span>
+          </p>
+        ) : null}
 
         {!loading && items.length > 0 ? (
           <div className="relative mt-4">
