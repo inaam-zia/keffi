@@ -241,6 +241,85 @@
     background-color: var(--brand-bg);
   }
 
+  .diet-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 3px;
+    width: 100%;
+    padding: 3px;
+    border-radius: 999px;
+    background: var(--brand-surface);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+    border: 1px solid var(--brand-border);
+  }
+
+  .diet-toggle__opt {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    min-height: 2.25rem;
+    border-radius: 999px;
+    padding: 0.35rem 0.5rem;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--brand-muted);
+    transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .diet-toggle__opt[aria-checked="true"].diet-toggle__opt--veg {
+    background: #ecfdf5;
+    color: #166534;
+    box-shadow: inset 0 0 0 1px #86efac;
+  }
+
+  .diet-toggle__opt[aria-checked="true"].diet-toggle__opt--nonveg {
+    background: #fef2f2;
+    color: #991b1b;
+    box-shadow: inset 0 0 0 1px #fca5a5;
+  }
+
+  .diet-toggle__opt[aria-checked="true"].diet-toggle__opt--both {
+    background: var(--brand-primary);
+    color: var(--brand-button-text);
+  }
+
+  .diet-toggle__mark {
+    display: inline-flex;
+    height: 0.85rem;
+    width: 0.85rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+    border: 1.5px solid currentColor;
+    flex-shrink: 0;
+  }
+
+  .diet-toggle__mark span {
+    display: block;
+    height: 0.38rem;
+    width: 0.38rem;
+  }
+
+  .diet-toggle__mark--veg {
+    color: #16a34a;
+  }
+
+  .diet-toggle__mark--veg span {
+    border-radius: 999px;
+    background: #16a34a;
+  }
+
+  .diet-toggle__mark--nonveg {
+    color: #dc2626;
+  }
+
+  .diet-toggle__mark--nonveg span {
+    clip-path: polygon(50% 8%, 92% 88%, 8% 88%);
+    background: #dc2626;
+  }
+
   .table-assist-btn {
     @apply rounded-full bg-white px-3 py-1.5 text-xs font-semibold shadow-sm transition;
     color: var(--brand-heading);

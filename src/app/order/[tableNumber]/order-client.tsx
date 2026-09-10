@@ -24,6 +24,12 @@ import { toHindiMenuText } from "@/lib/hindi-menu";
 import { useCustomerLocale } from "@/components/customer-locale-provider";
 import CustomerNav from "@/components/customer-nav";
 import TableAssistButtons from "@/components/table-assist-buttons";
+import DietToggle, {
+  matchesDietFilter,
+  readDietFilter,
+  type DietFilter,
+  DIET_FILTER_KEY,
+} from "@/components/diet-toggle";
 import { couponDiscount } from "@/lib/coupons";
 import { maxRedeemablePoints, rupeesFromPoints } from "@/lib/loyalty";
 import { takeReorderLines } from "@/lib/reorder";
@@ -681,7 +687,7 @@ export default function OrderClient({
   const [activeCategoryKey, setActiveCategoryKey] = useState<string | null>(null);
   const [orderPlacedSuccess, setOrderPlacedSuccess] = useState(false);
   const { locale, copy } = useCustomerLocale();
-  const [dietFilter, setDietFilter] = useState<"all" | "veg" | "jain">("all");
+  const [dietFilter, setDietFilter] = useState<DietFilter>("both");
   const [waitMinutes, setWaitMinutes] = useState(5);
   const [busyMode, setBusyMode] = useState(Boolean(branding.busyMode));
   const [wifiSsid, setWifiSsid] = useState(branding.wifiSsid);
@@ -697,6 +703,19 @@ export default function OrderClient({
   const skipObserverRef = useRef(false);
 
   const hasSavedDetails = Boolean(customerName.trim() && normalizePhone(customerPhone));
+
+  useEffect(() => {
+    setDietFilter(readDietFilter());
+  }, []);
+
+  function changeDietFilter(next: DietFilter) {
+    setDietFilter(next);
+    try {
+      localStorage.setItem(DIET_FILTER_KEY, next);
+    } catch {
+      /* ignore */
+    }
+  }
 
   useEffect(() => {
     try {
@@ -891,8 +910,7 @@ export default function OrderClient({
   const itemsByCategory = useMemo(() => {
     const grouped = new Map<string, MenuItem[]>();
     for (const item of items) {
-      if (dietFilter === "veg" && item.is_veg === false) continue;
-      if (dietFilter === "jain" && item.is_jain !== true) continue;
+      if (!matchesDietFilter(item, dietFilter)) continue;
       const key = item.category_id || "other";
       if (!grouped.has(key)) grouped.set(key, []);
       grouped.get(key)!.push(item);
@@ -915,8 +933,7 @@ export default function OrderClient({
 
     const filtered = new Map<string, MenuItem[]>();
     for (const item of items) {
-      if (dietFilter === "veg" && item.is_veg === false) continue;
-      if (dietFilter === "jain" && item.is_jain !== true) continue;
+      if (!matchesDietFilter(item, dietFilter)) continue;
       const categoryName = categoryNameById.get(item.category_id || "") || "";
       const haystack = [
         item.name,
@@ -954,14 +971,22 @@ export default function OrderClient({
   }, [categories, visibleItemsByCategory, copy.other]);
 
   const visibleOffers = useMemo(() => {
-    if (!normalizedSearch) return offers;
     return offers.filter((offer) => {
+      if (dietFilter !== "both") {
+        const included = offer.offer_items
+          .map((oi) => items.find((item) => item.id === oi.menu_item_id))
+          .filter((item): item is MenuItem => Boolean(item));
+        if (included.length && !included.every((item) => matchesDietFilter(item, dietFilter))) {
+          return false;
+        }
+      }
+      if (!normalizedSearch) return true;
       const includes = formatOfferIncludes(offer);
       const haystack =
         `${offer.name} ${toHindiMenuText(offer.name)} ${includes} ${toHindiMenuText(includes)}`.toLowerCase();
       return haystack.includes(normalizedSearch);
     });
-  }, [offers, normalizedSearch]);
+  }, [offers, items, normalizedSearch, dietFilter]);
 
   const hasVisibleMenuItems = visibleSections.length > 0;
   const hasVisibleOffers = visibleOffers.length > 0;
@@ -1373,21 +1398,10 @@ export default function OrderClient({
           />
         </div>
 
+        <div className="mt-3">
+          <DietToggle value={dietFilter} onChange={changeDietFilter} />
+        </div>
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-          {(["all", "veg", "jain"] as const).map((key) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setDietFilter(key)}
-              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                dietFilter === key
-                  ? "bg-[var(--brand-primary)] text-white"
-                  : "bg-white text-brand-muted"
-              }`}
-            >
-              {key === "all" ? copy.all : key === "veg" ? copy.veg : copy.jain}
-            </button>
-          ))}
           {hasActiveOrders ? (
             <>
               <button
@@ -1536,11 +1550,7 @@ export default function OrderClient({
               </div>
               <div className="menu-suggestions">
                 {suggestions
-                  .filter((item) => {
-                    if (dietFilter === "veg" && item.is_veg === false) return false;
-                    if (dietFilter === "jain" && item.is_jain !== true) return false;
-                    return true;
-                  })
+                  .filter((item) => matchesDietFilter(item, dietFilter))
                   .map((item) => (
                   <MenuSuggestionCard
                     key={item.id}
