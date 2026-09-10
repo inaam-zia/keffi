@@ -1,3 +1,5 @@
+import type { OrderItem, OrderWithItems } from "@/lib/types";
+
 /** Stable 5-digit bill number from order id (matches across reloads). */
 export function getBillNumber(orderId: string): number {
   let hash = 0;
@@ -166,5 +168,44 @@ export function calculateBillTotals(
     gstAmount,
     grandTotal,
     applyGst,
+  };
+}
+
+/**
+ * One bill from every non-cancelled ticket at a table — same merge the customer sees.
+ */
+export function consolidateOrdersForBill(orders: OrderWithItems[]): OrderWithItems | null {
+  const billable = orders.filter((order) => order.status !== "cancelled");
+  if (!billable.length) return null;
+
+  const sorted = [...billable].sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const base = sorted[0];
+  const merged = new Map<string, OrderItem>();
+
+  for (const order of sorted) {
+    for (const item of order.order_items || []) {
+      const key = `${item.item_name}__${item.item_price}__${item.notes || ""}__${item.spice_level || ""}`;
+      const existing = merged.get(key);
+      if (existing) {
+        existing.quantity += item.quantity;
+      } else {
+        merged.set(key, { ...item });
+      }
+    }
+  }
+
+  const total = billable.reduce((sum, order) => sum + Number(order.total || 0), 0);
+  const discount = billable.reduce((sum, order) => sum + (Number(order.discount) || 0), 0);
+  const loyaltyRedeemed = billable.reduce(
+    (sum, order) => sum + (Number(order.loyalty_redeemed) || 0),
+    0
+  );
+
+  return {
+    ...base,
+    total,
+    discount,
+    loyalty_redeemed: loyaltyRedeemed,
+    order_items: Array.from(merged.values()),
   };
 }

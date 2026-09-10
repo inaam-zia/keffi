@@ -501,7 +501,7 @@ export default function SettingsPage() {
       >
         <h3 className="font-bold text-brand-heading">Cashier password</h3>
         <p className="text-sm text-brand-muted">
-          Login for bills, table map, and day close.
+          Login for bills, live orders, and day close.
           {status?.cashierPasswordCustomized ? " A cashier password is set." : " Not set yet."}
         </p>
         <input

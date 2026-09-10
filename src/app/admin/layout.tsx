@@ -17,7 +17,6 @@ import { navLinksForRole, type AdminRole } from "@/lib/admin-role";
 const allLinks = [
   { href: "/admin/orders", label: "Live orders" },
   { href: "/admin/kitchen", label: "Kitchen" },
-  { href: "/admin/floor", label: "Tables" },
   { href: "/admin/day-close", label: "Day close" },
   { href: "/admin/dashboard", label: "Dashboard" },
   { href: "/admin/customers", label: "Customers" },
@@ -105,9 +104,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           {links.map((link) => {
             const active = pathname === link.href;
             const isLiveOrders = link.href === "/admin/orders";
-            const isFloor = link.href === "/admin/floor";
             const isInventory = link.href === "/admin/inventory";
-            const requestBadge = isLiveOrders || isFloor;
+            const requestBadge = isLiveOrders;
             return (
               <Link
                 key={link.href}

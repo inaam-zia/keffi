@@ -15,7 +15,6 @@ const ROLE_PATHS: Record<AdminRole, string[]> = {
     "/admin/orders",
     "/admin/history",
     "/admin/day-close",
-    "/admin/floor",
     "/admin/payment",
     "/admin/reservations",
     "/admin/coupons",

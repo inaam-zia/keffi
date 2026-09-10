@@ -6,7 +6,13 @@ import type { CafeBranding } from "@/lib/branding-types";
 import { getDefaultBranding } from "@/lib/branding-types";
 import { formatDateShort, formatPrice } from "@/lib/format";
 import { fetchJsonArray } from "@/lib/parse-api";
-import { getOrderGrandTotal } from "@/lib/receipt";
+import {
+  consolidateOrdersForBill,
+  formatTaxLineLabel,
+  getOrderBillTotals,
+  getOrderGrandTotal,
+  type BillTotals,
+} from "@/lib/receipt";
 import type { OrderStatus, OrderWithItems } from "@/lib/types";
 import TableHeading from "@/components/table-heading";
 import AdminTableMap from "@/components/admin-table-map";
@@ -86,6 +92,7 @@ export default function LiveOrdersPage() {
   const [floorTables, setFloorTables] = useState<FloorTable[]>([]);
   const [floorLoading, setFloorLoading] = useState(true);
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
+  const [expandedPayable, setExpandedPayable] = useState<number | null>(null);
 
   const gst = useMemo(
     () => ({
@@ -190,36 +197,54 @@ export default function LiveOrdersPage() {
 
   /** Tables that finished food (served) but may still need payment / session clear. */
   const payableTables = useMemo(() => {
-    const activeNumbers = new Set(orders.map((o) => o.table_number));
+    const kitchenTables = new Set(orders.map((o) => o.table_number));
     const cleared = new Set(clearedTables);
-    const map = new Map<
-      number,
-      {
-        tableNumber: number;
-        tableLabel: string | null | undefined;
-        total: number;
-        guests: string;
-      }
-    >();
+    const grouped = new Map<number, OrderWithItems[]>();
 
     for (const order of servedOrders) {
-      if (activeNumbers.has(order.table_number)) continue;
+      if (kitchenTables.has(order.table_number)) continue;
       if (cleared.has(order.table_number)) continue;
-      const amount = getOrderGrandTotal(order, gst);
-      const existing = map.get(order.table_number);
-      if (existing) {
-        existing.total += amount;
-      } else {
-        map.set(order.table_number, {
-          tableNumber: order.table_number,
-          tableLabel: order.table_label,
-          total: amount,
-          guests: order.customer_name || "Guest",
-        });
-      }
+      if (order.payment_method?.trim()) continue;
+      if (!grouped.has(order.table_number)) grouped.set(order.table_number, []);
+      grouped.get(order.table_number)!.push(order);
     }
 
-    return Array.from(map.values()).sort((a, b) => a.tableNumber - b.tableNumber);
+    const rows: {
+      tableNumber: number;
+      tableLabel: string | null | undefined;
+      guests: string;
+      bill: OrderWithItems;
+      totals: BillTotals;
+      itemsTotal: number;
+      discount: number;
+    }[] = [];
+
+    for (const [tableNumber, tableOrders] of Array.from(grouped.entries())) {
+      const bill = consolidateOrdersForBill(tableOrders);
+      if (!bill || !bill.order_items.length) continue;
+      const totals = getOrderBillTotals(bill, gst);
+      const guests = Array.from(
+        new Set(
+          tableOrders
+            .map((order) => order.customer_name?.trim())
+            .filter((name): name is string => Boolean(name))
+        )
+      );
+      rows.push({
+        tableNumber,
+        tableLabel: tableOrders[0]?.table_label,
+        guests: guests.length ? guests.join(", ") : "Guest",
+        bill,
+        totals,
+        itemsTotal: bill.order_items.reduce(
+          (sum, item) => sum + item.item_price * item.quantity,
+          0
+        ),
+        discount: Number(bill.discount) || 0,
+      });
+    }
+
+    return rows.sort((a, b) => a.tableNumber - b.tableNumber);
   }, [orders, servedOrders, clearedTables, gst]);
 
   const mapTables = useMemo(() => {
@@ -464,38 +489,118 @@ export default function LiveOrdersPage() {
             </p>
           </div>
           <div className="space-y-2">
-            {visiblePayable.map((table) => (
-              <div
-                key={table.tableNumber}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-green-200 bg-white px-3 py-2.5"
-              >
-                <div>
-                  <TableHeading
-                    tableNumber={table.tableNumber}
-                    tableName={table.tableLabel}
-                    size="md"
-                  />
-                  <p className="text-xs text-cafe-500">
-                    {table.guests} · {formatPrice(table.total)}
-                  </p>
+            {visiblePayable.map((table) => {
+              const expanded = expandedPayable === table.tableNumber;
+              return (
+                <div
+                  key={table.tableNumber}
+                  className="rounded-xl border border-green-200 bg-white px-3 py-2.5"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <TableHeading
+                        tableNumber={table.tableNumber}
+                        tableName={table.tableLabel}
+                        size="md"
+                      />
+                      <p className="text-xs text-cafe-500">
+                        {table.guests} · To pay {formatPrice(table.totals.grandTotal)}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {(["upi", "cash", "card"] as const).map((method) => (
+                        <button
+                          key={method}
+                          type="button"
+                          onClick={() =>
+                            closeTable(table.tableNumber, table.tableLabel, method)
+                          }
+                          disabled={closingTable === table.tableNumber}
+                          className="btn-primary text-xs capitalize disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {closingTable === table.tableNumber ? "Clearing…" : method}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="mt-2 text-xs font-semibold text-[var(--brand-primary)] underline-offset-2 hover:underline"
+                    onClick={() =>
+                      setExpandedPayable(expanded ? null : table.tableNumber)
+                    }
+                    aria-expanded={expanded}
+                  >
+                    {expanded ? "Hide order" : "View order"}
+                  </button>
+                  {expanded ? (
+                    <div className="mt-2 border-t border-green-100 pt-2">
+                      <ul className="space-y-1 text-sm">
+                        {table.bill.order_items.map((item) => (
+                          <li
+                            key={`${item.item_name}-${item.item_price}-${item.notes}-${item.spice_level}`}
+                            className="flex justify-between gap-3"
+                          >
+                            <span>
+                              {item.quantity}× {item.item_name}
+                              {item.spice_level ? ` · ${item.spice_level}` : ""}
+                              {item.notes ? (
+                                <span className="block text-xs text-amber-800">
+                                  {item.notes}
+                                </span>
+                              ) : null}
+                            </span>
+                            <span className="shrink-0 text-cafe-600">
+                              {formatPrice(item.item_price * item.quantity)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                      <dl className="mt-2 space-y-0.5 border-t border-green-100 pt-2 text-xs text-cafe-600">
+                        <div className="flex justify-between">
+                          <dt>Items</dt>
+                          <dd>{formatPrice(table.itemsTotal)}</dd>
+                        </div>
+                        {table.discount > 0 ? (
+                          <div className="flex justify-between">
+                            <dt>Discount</dt>
+                            <dd>−{formatPrice(table.discount)}</dd>
+                          </div>
+                        ) : null}
+                        {table.totals.applyGst ? (
+                          <>
+                            <div className="flex justify-between">
+                              <dt>
+                                {formatTaxLineLabel(
+                                  "CGST",
+                                  table.totals.cgstPercent,
+                                  table.totals.subTotal
+                                )}
+                              </dt>
+                              <dd>{formatPrice(table.totals.cgstAmount)}</dd>
+                            </div>
+                            <div className="flex justify-between">
+                              <dt>
+                                {formatTaxLineLabel(
+                                  "SGST",
+                                  table.totals.sgstPercent,
+                                  table.totals.subTotal
+                                )}
+                              </dt>
+                              <dd>{formatPrice(table.totals.sgstAmount)}</dd>
+                            </div>
+                          </>
+                        ) : null}
+                        <div className="flex justify-between pt-1 text-sm font-bold text-cafe-900">
+                          <dt>To pay</dt>
+                          <dd>{formatPrice(table.totals.grandTotal)}</dd>
+                        </div>
+                      </dl>
+                    </div>
+                  ) : null}
                 </div>
-                <div className="flex flex-wrap gap-1">
-                  {(["upi", "cash", "card"] as const).map((method) => (
-                    <button
-                      key={method}
-                      type="button"
-                      onClick={() =>
-                        closeTable(table.tableNumber, table.tableLabel, method)
-                      }
-                      disabled={closingTable === table.tableNumber}
-                      className="btn-primary text-xs capitalize disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {closingTable === table.tableNumber ? "Clearing…" : method}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
