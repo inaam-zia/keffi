@@ -26,7 +26,7 @@ export function buildWhatsAppBillText(
     }),
     "",
     `Subtotal: ${formatPrice(bill.subTotal)}`,
-    ...taxLines,
+    ...(taxLines.length ? ["----------", ...taxLines, "----------"] : []),
     `Total: ${formatPrice(bill.grandTotal)}`,
   ];
   return lines.join("\n");

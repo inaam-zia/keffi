@@ -703,7 +703,6 @@ export default function OrderClient({
   const [orderType, setOrderType] = useState<OrderType>("dine_in");
   const [gst, setGst] = useState({
     gstEnabled: branding.gstEnabled,
-    gstin: branding.gstin,
     cgstPercent: branding.cgstPercent,
     sgstPercent: branding.sgstPercent,
   });
@@ -828,7 +827,6 @@ export default function OrderClient({
         if (!data) return;
         setGst({
           gstEnabled: Boolean(data.gstEnabled),
-          gstin: data.gstin ?? null,
           cgstPercent: Number(data.cgstPercent) || 0,
           sgstPercent: Number(data.sgstPercent) || 0,
         });
@@ -1833,17 +1831,22 @@ export default function OrderClient({
                   </div>
                 ) : null}
                 {cartBill.applyGst ? (
-                  <div className="space-y-0.5 text-sm text-cafe-600">
-                    {gst.gstin ? (
-                      <p className="text-xs text-cafe-500">GSTIN: {gst.gstin}</p>
+                  <>
+                    {couponOff > 0 || loyaltyOff > 0 ? (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-cafe-600">{copy.subTotal}</span>
+                        <span className="font-bold text-cafe-900">
+                          {formatPrice(cartBill.subTotal)}
+                        </span>
+                      </div>
                     ) : null}
                     <BillGstLines
                       bill={cartBill}
                       formatAmount={formatPrice}
-                      lineClassName="flex items-center justify-between gap-3 text-xs"
+                      lineClassName="flex items-center justify-between gap-3 text-xs text-cafe-600"
                       totalClassName="flex items-center justify-between gap-3 text-sm font-semibold text-cafe-800"
                     />
-                  </div>
+                  </>
                 ) : null}
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-cafe-600">{copy.toPay}</span>

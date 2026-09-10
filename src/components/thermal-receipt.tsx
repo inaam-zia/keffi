@@ -152,25 +152,31 @@ export default function ThermalReceipt({
         </div>
 
         {bill.applyGst ? (
-          <div className="thermal-receipt__tax-lines">
-            {getGstDisplayLines(bill).map((line) => (
-              <div
-                key={line.key}
-                className={
-                  line.emphasize
-                    ? "thermal-receipt__gst-line thermal-receipt__gst-line--total"
-                    : "thermal-receipt__gst-line"
-                }
-              >
-                <span>{line.label}</span>
-                <span>{formatReceiptAmount(line.amount)}</span>
-              </div>
-            ))}
-          </div>
+          <>
+            <hr className="thermal-receipt__rule" />
+            <div className="thermal-receipt__tax-lines">
+              {getGstDisplayLines(bill).map((line) => (
+                <div
+                  key={line.key}
+                  className={
+                    line.emphasize
+                      ? "thermal-receipt__gst-line thermal-receipt__gst-line--total"
+                      : "thermal-receipt__gst-line"
+                  }
+                >
+                  <span>{line.label}</span>
+                  <span>{formatReceiptAmount(line.amount)}</span>
+                </div>
+              ))}
+            </div>
+            <hr className="thermal-receipt__rule" />
+          </>
         ) : null}
       </div>
 
-      <hr className="thermal-receipt__rule thermal-receipt__rule--thick" />
+      {bill.applyGst ? null : (
+        <hr className="thermal-receipt__rule thermal-receipt__rule--thick" />
+      )}
 
       <div className="thermal-receipt__grand-total">
         <span>Grand Total</span>

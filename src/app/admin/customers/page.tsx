@@ -280,6 +280,7 @@ export default function CustomersPage() {
                                       formatAmount={formatPrice}
                                       lineClassName="mt-1 flex justify-between gap-3 text-[11px] leading-snug text-cafe-500"
                                       totalClassName="mt-1 flex justify-between gap-3 text-[11px] font-semibold leading-snug text-cafe-800"
+                                      separatorClassName="my-1.5 block h-0 w-full border-0 border-t border-dashed border-cafe-400"
                                     />
                                   ) : null}
                                 </li>

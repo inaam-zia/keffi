@@ -229,6 +229,11 @@ export default function AdminGstForm() {
           <p className="mb-2 text-xs font-bold uppercase tracking-wider text-brand-muted">
             Bill preview on {formatPrice(SAMPLE_SUBTOTAL)}
           </p>
+          <div className="flex justify-between gap-3 text-brand-muted">
+            <span>Sub total</span>
+            <span className="tabular-nums">{formatPrice(SAMPLE_SUBTOTAL)}</span>
+          </div>
+          <hr className="my-1.5 border-0 border-t border-dashed border-cafe-300" />
           {previewLines.map((line) => (
             <div
               key={line.key}
@@ -240,6 +245,7 @@ export default function AdminGstForm() {
               <span className="shrink-0 tabular-nums">{formatPrice(line.amount)}</span>
             </div>
           ))}
+          <hr className="my-1.5 border-0 border-t border-dashed border-cafe-300" />
         </div>
       ) : null}
 

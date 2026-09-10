@@ -900,7 +900,7 @@
   }
 
   .thermal-receipt__tax-lines {
-    @apply mt-0.5;
+    @apply mt-0;
   }
 
   .thermal-receipt__grand-total {

@@ -672,12 +672,10 @@ export default function LiveOrdersPage() {
                         ) : null}
                         {table.totals.applyGst ? (
                           <>
-                            {branding.gstin ? (
-                              <div className="flex justify-between text-cafe-500">
-                                <dt>GSTIN</dt>
-                                <dd className="font-mono">{branding.gstin}</dd>
-                              </div>
-                            ) : null}
+                            <div className="flex justify-between">
+                              <dt>Sub total</dt>
+                              <dd>{formatPrice(table.totals.subTotal)}</dd>
+                            </div>
                             <BillGstLines
                               bill={table.totals}
                               formatAmount={formatPrice}

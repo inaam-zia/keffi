@@ -154,7 +154,7 @@ export function printThermalBill(receiptEl: HTMLElement | null, title = "Bill") 
       margin-right: 2mm;
     }
     .thermal-receipt__tax-lines {
-      margin-top: 0.6mm;
+      margin-top: 0;
     }
     .thermal-receipt__gst-line {
       margin-top: 0.4mm;

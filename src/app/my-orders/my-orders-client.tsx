@@ -88,8 +88,7 @@ function OrderCard({
         ))}
       </ul>
       {bill.applyGst ? (
-        <div className="mt-2 space-y-0.5 border-t border-cafe-100 pt-2 text-xs text-cafe-500">
-          {branding.gstin ? <p>GSTIN: {branding.gstin}</p> : null}
+        <div className="mt-2 space-y-0.5 text-xs text-cafe-500">
           <BillGstLines
             bill={bill}
             formatAmount={formatPrice}
