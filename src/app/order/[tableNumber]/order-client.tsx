@@ -23,6 +23,7 @@ import {
 import { toHindiMenuText } from "@/lib/hindi-menu";
 import { useCustomerLocale } from "@/components/customer-locale-provider";
 import CustomerNav from "@/components/customer-nav";
+import TableAssistButtons from "@/components/table-assist-buttons";
 import { couponDiscount } from "@/lib/coupons";
 import { maxRedeemablePoints, rupeesFromPoints } from "@/lib/loyalty";
 import { takeReorderLines } from "@/lib/reorder";
@@ -685,7 +686,6 @@ export default function OrderClient({
   const [busyMode, setBusyMode] = useState(Boolean(branding.busyMode));
   const [wifiSsid, setWifiSsid] = useState(branding.wifiSsid);
   const [wifiPassword, setWifiPassword] = useState(branding.wifiPassword);
-  const [requestNote, setRequestNote] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponError, setCouponError] = useState("");
@@ -1361,40 +1361,17 @@ export default function OrderClient({
             {copy.busy}
           </p>
         ) : null}
-        <div className="mt-2 flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold shadow-sm"
-            onClick={async () => {
-              const res = await fetch("/api/table-requests", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ tableNumber, kind: "waiter" }),
-              });
-              setRequestNote(res.ok ? copy.waiterSent : copy.couldNotSend);
-            }}
-          >
-            {copy.callWaiter}
-          </button>
-          <button
-            type="button"
-            className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold shadow-sm"
-            onClick={async () => {
-              const res = await fetch("/api/table-requests", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ tableNumber, kind: "bill" }),
-              });
-              setRequestNote(res.ok ? copy.billSent : copy.couldNotSend);
-            }}
-          >
-            {copy.requestBill}
-          </button>
-          <a href="/reserve" className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold shadow-sm">
-            {copy.reserve}
-          </a>
+        <div className="mt-2">
+          <TableAssistButtons
+            tableNumber={tableNumber}
+            canRequestBill={hasActiveOrders}
+            extra={
+              <a href="/reserve" className="table-assist-btn">
+                {copy.reserve}
+              </a>
+            }
+          />
         </div>
-        {requestNote ? <p className="mt-1 text-xs text-green-700">{requestNote}</p> : null}
 
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
           {(["all", "veg", "jain"] as const).map((key) => (

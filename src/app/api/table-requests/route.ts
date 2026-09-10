@@ -3,6 +3,7 @@ import { isAdminAuthenticated } from "@/lib/auth";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/supabase-errors";
 import { validateTableAccess } from "@/lib/table-session";
+import { WAITER_COOLDOWN_MS } from "@/lib/waiter-cooldown";
 
 export async function GET() {
   if (!isAdminAuthenticated()) {
@@ -50,6 +51,49 @@ export async function POST(request: Request) {
 
   try {
     const supabase = createServerClient();
+
+    if (kind === "waiter") {
+      const { data: lastWaiter } = await supabase
+        .from("table_requests")
+        .select("created_at")
+        .eq("table_number", tableNumber)
+        .eq("kind", "waiter")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (lastWaiter?.created_at) {
+        const elapsed = Date.now() - new Date(lastWaiter.created_at).getTime();
+        if (elapsed < WAITER_COOLDOWN_MS) {
+          return NextResponse.json(
+            {
+              error: "Waiter already called",
+              code: "WAITER_COOLDOWN",
+              retryAfterMs: WAITER_COOLDOWN_MS - elapsed,
+            },
+            { status: 429 }
+          );
+        }
+      }
+    }
+
+    if (kind === "bill") {
+      const { data: order } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("table_number", tableNumber)
+        .neq("status", "cancelled")
+        .limit(1)
+        .maybeSingle();
+
+      if (!order) {
+        return NextResponse.json(
+          { error: "Place an order first to request the bill.", code: "NO_ORDER" },
+          { status: 409 }
+        );
+      }
+    }
+
     const { data: existing } = await supabase
       .from("table_requests")
       .select("id")

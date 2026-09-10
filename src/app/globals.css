@@ -158,12 +158,45 @@
     box-sizing: border-box;
     max-width: 100%;
     min-width: 0;
+    min-height: 3.375rem;
+    display: block;
+  }
+
+  .datetime-field-wrap {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
 
   .datetime-field {
+    display: block;
+    flex: 1 1 auto;
     width: 100%;
     min-width: 0;
     max-width: 100%;
+    min-height: 3.375rem;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  .datetime-field::-webkit-datetime-edit,
+  .datetime-field::-webkit-datetime-edit-fields-wrapper,
+  .datetime-field::-webkit-datetime-edit-text,
+  .datetime-field::-webkit-datetime-edit-month-field,
+  .datetime-field::-webkit-datetime-edit-day-field,
+  .datetime-field::-webkit-datetime-edit-year-field,
+  .datetime-field::-webkit-datetime-edit-hour-field,
+  .datetime-field::-webkit-datetime-edit-minute-field,
+  .datetime-field::-webkit-datetime-edit-ampm-field {
+    padding: 0;
+  }
+
+  .datetime-field::-webkit-datetime-edit {
+    width: 100%;
+    min-width: 0;
+    display: inline-flex;
+    flex: 1;
   }
 
   .datetime-field--empty {
@@ -176,6 +209,8 @@
 
   .datetime-field::-webkit-calendar-picker-indicator {
     margin-left: auto;
+    cursor: pointer;
+    opacity: 0.7;
   }
 
   .order-input:focus {
@@ -204,6 +239,59 @@
 
   .order-btn-secondary:hover {
     background-color: var(--brand-bg);
+  }
+
+  .table-assist-btn {
+    @apply rounded-full bg-white px-3 py-1.5 text-xs font-semibold shadow-sm transition;
+    color: var(--brand-heading);
+  }
+
+  .table-assist-btn:active {
+    transform: scale(0.96);
+  }
+
+  .table-assist-btn--success {
+    background-color: #dcfce7;
+    color: #166534;
+    box-shadow: 0 0 0 2px #86efac;
+  }
+
+  .table-assist-btn--cooling {
+    background-color: #fff7ed;
+    color: #9a3412;
+    cursor: not-allowed;
+  }
+
+  .table-assist-btn--disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .table-assist-note {
+    @apply mt-1 rounded-xl px-3 py-2 text-xs font-medium;
+  }
+
+  .table-assist-note--ok {
+    background-color: #f0fdf4;
+    color: #166534;
+  }
+
+  .table-assist-note--wait {
+    background-color: #fffbeb;
+    color: #92400e;
+  }
+
+  .table-assist-note--error {
+    background-color: #fef2f2;
+    color: #b91c1c;
+  }
+
+  .table-assist-note--muted {
+    background: transparent;
+    padding-left: 0;
+    padding-right: 0;
+    color: var(--brand-subtle);
   }
 
   .table-badge-sm {

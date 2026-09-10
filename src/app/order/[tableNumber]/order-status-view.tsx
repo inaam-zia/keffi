@@ -10,6 +10,7 @@ import { fetchMyActiveOrders, ORDER_STATUS_POLL_MS } from "@/lib/order-poll";
 import { getOrderGrandTotal } from "@/lib/receipt";
 import { useCustomerLocale } from "@/components/customer-locale-provider";
 import CustomerNav from "@/components/customer-nav";
+import TableAssistButtons from "@/components/table-assist-buttons";
 import {
   customerInputLang,
   displayMenuText,
@@ -349,7 +350,6 @@ export default function OrderStatusView({
   const [wifiSsid, setWifiSsid] = useState(branding.wifiSsid);
   const [wifiPassword, setWifiPassword] = useState(branding.wifiPassword);
   const [splitCount, setSplitCount] = useState(2);
-  const [requestNote, setRequestNote] = useState("");
 
   const loadPaymentQr = useCallback(async () => {
     const res = await fetch(`/api/payment-qr?_=${Date.now()}`, { cache: "no-store" });
@@ -485,17 +485,6 @@ export default function OrderStatusView({
       )
     : "";
 
-  async function sendTableRequest(kind: "waiter" | "bill") {
-    const res = await fetch("/api/table-requests", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tableNumber, kind }),
-    });
-    setRequestNote(
-      res.ok ? (kind === "waiter" ? copy.waiterSent : copy.billSent) : copy.couldNotSend
-    );
-  }
-
   // When the bill is generated (all served), reload GST/CGST/SGST from admin settings
   useEffect(() => {
     if (!allServed || allCancelled) return;
@@ -573,23 +562,12 @@ export default function OrderStatusView({
             {wifiPassword ? ` · ${wifiPassword}` : ""}
           </p>
         ) : null}
-        <div className="flex flex-wrap justify-center gap-2">
-          <button
-            type="button"
-            className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold shadow-sm"
-            onClick={() => void sendTableRequest("waiter")}
-          >
-            {copy.callWaiter}
-          </button>
-          <button
-            type="button"
-            className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold shadow-sm"
-            onClick={() => void sendTableRequest("bill")}
-          >
-            {copy.requestBill}
-          </button>
-        </div>
-        {requestNote ? <p className="text-center text-xs text-green-700">{requestNote}</p> : null}
+        <TableAssistButtons
+          tableNumber={tableNumber}
+          canRequestBill={orders.length > 0 && !allCancelled}
+          align="center"
+          ready={!loading}
+        />
 
         <div className="space-y-3">
           <h2 className="text-sm font-bold uppercase tracking-wider text-brand-subtle">

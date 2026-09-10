@@ -80,7 +80,7 @@ export default function ReserveClient({ branding }: { branding: CafeBranding }) 
             </label>
             <label className="block w-full min-w-0">
               <span className="order-label">{copy.dateTime}</span>
-              <div className="relative mt-1 w-full min-w-0">
+              <div className="datetime-field-wrap relative mt-1 w-full min-w-0">
                 {!reservedFor ? (
                   <span className="pointer-events-none absolute left-4 top-1/2 z-[1] -translate-y-1/2 text-sm text-cafe-400">
                     {copy.datePlaceholder}
