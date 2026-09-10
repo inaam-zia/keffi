@@ -1,6 +1,7 @@
 import type { OrderWithItems } from "@/lib/types";
 
 export const ORDER_STATUS_POLL_MS = 2000;
+export const LIVE_ORDERING_POLL_MS = 8000;
 
 const noStore: RequestInit = { cache: "no-store" };
 
@@ -22,4 +23,20 @@ export async function fetchMyActiveOrders(
 
   const data = await res.json();
   return { orders: (data.orders ?? []) as OrderWithItems[] };
+}
+
+export async function fetchLiveOrderingItems(
+  tableNumber: number
+): Promise<string[]> {
+  const res = await fetch(
+    `/api/orders/live-activity?table=${tableNumber}&_=${Date.now()}`,
+    noStore
+  );
+
+  if (!res.ok) return [];
+
+  const data = await res.json();
+  return Array.isArray(data.items)
+    ? data.items.filter((name: unknown): name is string => typeof name === "string" && name.trim().length > 0)
+    : [];
 }

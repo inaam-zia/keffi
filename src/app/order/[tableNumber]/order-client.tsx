@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatPrice } from "@/lib/format";
-import { fetchMyActiveOrders, ORDER_STATUS_POLL_MS } from "@/lib/order-poll";
+import { liveOrderingDisplayName } from "@/lib/live-ordering";
+import {
+  fetchLiveOrderingItems,
+  fetchMyActiveOrders,
+  LIVE_ORDERING_POLL_MS,
+  ORDER_STATUS_POLL_MS,
+} from "@/lib/order-poll";
 import { normalizePhone, isValidPhone } from "@/lib/phone";
 import CafeBrandingBlock from "@/components/cafe-branding-block";
 import DeveloperCredit from "@/components/developer-credit";
@@ -422,6 +428,60 @@ function MenuSuggestionCard({
   );
 }
 
+function findMenuItemForLiveName(name: string, menuItems: MenuItem[]): MenuItem | undefined {
+  const display = liveOrderingDisplayName(name).toLowerCase();
+  return menuItems.find(
+    (item) =>
+      item.name.toLowerCase() === display || item.name.toLowerCase() === name.toLowerCase()
+  );
+}
+
+function LiveOrderingStrip({
+  itemNames,
+  menuItems,
+  onSelectItem,
+}: {
+  itemNames: string[];
+  menuItems: MenuItem[];
+  onSelectItem: (item: MenuItem) => void;
+}) {
+  if (!itemNames.length) return null;
+
+  return (
+    <section className="px-5 pt-4" aria-label="Other tables are ordering">
+      <div className="mb-2.5 flex items-center gap-2">
+        <span className="live-ordering-dot" aria-hidden />
+        <h2 className="text-sm font-bold leading-tight text-cafe-900">
+          Other tables are ordering
+        </h2>
+      </div>
+      <div className="live-ordering-rail">
+        {itemNames.map((name) => {
+          const menuItem = findMenuItemForLiveName(name, menuItems);
+          const label = liveOrderingDisplayName(name);
+          if (menuItem) {
+            return (
+              <button
+                key={name}
+                type="button"
+                className="live-ordering-chip"
+                onClick={() => onSelectItem(menuItem)}
+              >
+                {label}
+              </button>
+            );
+          }
+          return (
+            <span key={name} className="live-ordering-chip">
+              {label}
+            </span>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function MenuCategorySection({
   sectionKey,
   title,
@@ -577,6 +637,7 @@ export default function OrderClient({
   const [suggestions, setSuggestions] = useState<MenuItem[]>([]);
   const [offers, setOffers] = useState<Offer[]>(initialOffers);
   const [suggestionsSource, setSuggestionsSource] = useState<"feedback" | "sales" | "menu">("menu");
+  const [liveOrderingItems, setLiveOrderingItems] = useState<string[]>([]);
   const [detailItem, setDetailItem] = useState<MenuItem | null>(null);
   const [activeCategoryKey, setActiveCategoryKey] = useState<string | null>(null);
   const [orderPlacedSuccess, setOrderPlacedSuccess] = useState(false);
@@ -667,6 +728,25 @@ export default function OrderClient({
     }
 
     const interval = setInterval(tick, ORDER_STATUS_POLL_MS);
+    return () => clearInterval(interval);
+  }, [tableNumber, step]);
+
+  useEffect(() => {
+    if (step !== "menu") return;
+
+    async function refreshLiveOrdering() {
+      const names = await fetchLiveOrderingItems(tableNumber);
+      setLiveOrderingItems(names);
+    }
+
+    void refreshLiveOrdering();
+
+    function tick() {
+      if (document.visibilityState === "hidden") return;
+      void refreshLiveOrdering();
+    }
+
+    const interval = setInterval(tick, LIVE_ORDERING_POLL_MS);
     return () => clearInterval(interval);
   }, [tableNumber, step]);
 
@@ -1161,6 +1241,14 @@ export default function OrderClient({
           </div>
         ) : null}
       </header>
+
+      {!normalizedSearch ? (
+        <LiveOrderingStrip
+          itemNames={liveOrderingItems}
+          menuItems={items}
+          onSelectItem={openItemDetail}
+        />
+      ) : null}
 
       {hasVisibleOffers ? (
         <section className="px-5 py-4">

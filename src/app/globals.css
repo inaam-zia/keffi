@@ -227,6 +227,47 @@
     color: var(--brand-button-text);
   }
 
+  .live-ordering-dot {
+    display: inline-block;
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 999px;
+    background-color: #16a34a;
+    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.55);
+    animation: live-ordering-pulse 1.8s ease-out infinite;
+  }
+
+  @keyframes live-ordering-pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.5);
+    }
+    70% {
+      box-shadow: 0 0 0 6px rgba(22, 163, 74, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(22, 163, 74, 0);
+    }
+  }
+
+  .live-ordering-rail {
+    @apply flex gap-2 overflow-x-auto pb-0.5;
+    margin-right: -1.25rem;
+    padding-right: 1.25rem;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .live-ordering-rail::-webkit-scrollbar {
+    display: none;
+  }
+
+  .live-ordering-chip {
+    @apply inline-flex shrink-0 items-center rounded-full border px-3 py-1.5 text-xs font-semibold;
+    border-color: color-mix(in srgb, var(--brand-border) 90%, transparent);
+    background-color: var(--brand-surface);
+    color: var(--brand-heading);
+  }
+
   .menu-item-card {
     @apply flex w-full items-start gap-3 rounded-2xl border p-3.5 text-left shadow-sm transition active:scale-[0.99];
     border-color: color-mix(in srgb, var(--brand-border) 80%, transparent);
