@@ -345,7 +345,8 @@ export default function OrderStatusView({
   const [waitMinutes, setWaitMinutes] = useState(5);
   const [wifiSsid, setWifiSsid] = useState(branding.wifiSsid);
   const [wifiPassword, setWifiPassword] = useState(branding.wifiPassword);
-  const [splitCount, setSplitCount] = useState(2);
+  /** Raw input so the field can be cleared/edited freely; clamped only when computing eachPays. */
+  const [splitCountInput, setSplitCountInput] = useState("2");
 
   const loadPaymentQr = useCallback(async () => {
     const res = await fetch(`/api/payment-qr?_=${Date.now()}`, { cache: "no-store" });
@@ -472,7 +473,11 @@ export default function OrderStatusView({
         }
       : null);
   const grandTotal = billOrder ? getOrderGrandTotal(billOrder, gst) : 0;
-  const splits = Math.max(2, Math.min(12, Math.floor(splitCount) || 2));
+  const parsedSplits = Number(splitCountInput);
+  const splits =
+    Number.isFinite(parsedSplits) && parsedSplits >= 1
+      ? Math.floor(parsedSplits)
+      : 1;
   const eachPays = Math.round((grandTotal / splits) * 100) / 100;
 
   // When the bill is generated (all served), reload GST/CGST/SGST from admin settings
@@ -626,11 +631,11 @@ export default function OrderStatusView({
               <span>{copy.splitBetween}</span>
               <input
                 type="number"
-                min={2}
-                max={12}
+                min={1}
+                inputMode="numeric"
                 className="order-input w-20 py-1 text-right"
-                value={splits}
-                onChange={(e) => setSplitCount(Number(e.target.value) || 2)}
+                value={splitCountInput}
+                onChange={(e) => setSplitCountInput(e.target.value)}
               />
             </label>
             <p className="mt-2 text-sm font-bold text-brand-heading">
